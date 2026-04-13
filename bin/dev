@@ -1,9 +1,27 @@
 #!/usr/bin/env bash
+set -e
 
-if ! gem list foreman -i --quiet; then
-  echo "Installing foreman..."
-  gem install foreman
-fi
+echo "Starting Rails on port 3000..."
+bin/rails server -p 3000 &
+RAILS_PID=$!
 
-# Using Procfile to run both Rails and Vite
-exec foreman start -f Procfile.dev
+echo "Starting Vite dev server on port 3036..."
+npm run dev &
+VITE_PID=$!
+
+echo ""
+echo "========================================="
+echo "✨ Development servers running!"
+echo "========================================="
+echo "Rails:  http://localhost:3000"
+echo "Vite:   http://localhost:3036"
+echo ""
+echo "Press Ctrl+C to stop both servers"
+echo "========================================="
+echo ""
+
+# Wait for both processes
+wait $RAILS_PID $VITE_PID
+
+# Cleanup on exit
+trap "kill $RAILS_PID $VITE_PID 2>/dev/null" EXIT
