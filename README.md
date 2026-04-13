@@ -148,9 +148,12 @@ bundle exec rspec
   - DoctorSchedule model with working hours (Mon-Fri 8-5, Sat 8-12, Sun closed)
   - All models have indexes, validations, and factory fixtures
   - Database uses Supabase with PgBouncer (prepared_statements: false)
-
-### 🔄 In Progress
-- **Phase 8**: Inertia.js + React + Vite + Tailwind CSS setup (frontend infrastructure)
+- **Phase 8**: Inertia.js + React + Vite + Tailwind CSS setup ✅
+  - React 18 + React DOM with Inertia.js integration
+  - Vite dev server with hot reload (HMR)
+  - Tailwind CSS for styling
+  - Sample Dashboard component rendered
+  - Automatic JSX runtime (no need to import React in components)
 
 ### 📋 Pending
 - **Phase 3**: Google Calendar Integration (available_slots, book_appointment, reschedule, cancel)
