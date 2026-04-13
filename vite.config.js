@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [
     react({
       jsxRuntime: 'automatic',
+      fastRefresh: true,
     }),
     RubyPlugin(),
   ],
@@ -13,5 +14,8 @@ export default defineConfig({
     alias: {
       '@': '/app/frontend',
     },
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', '@inertiajs/react'],
   },
 })
