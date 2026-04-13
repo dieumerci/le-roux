@@ -1,9 +1,26 @@
-# This file should ensure the existence of records required to run the application in every environment (production,
-# development, test). The code here should be idempotent so that it can be executed at any point in every environment.
-# The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
-#
-# Example:
-#
-#   ["Action", "Comedy", "Drama", "Horror"].each do |genre_name|
-#     MovieGenre.find_or_create_by!(name: genre_name)
-#   end
+# Dr Le Roux's working hours
+# Monday-Friday: 08:00 - 17:00, lunch break 12:00 - 13:00
+# Saturday: 08:00 - 12:00, no break
+# Sunday: closed
+
+schedules = [
+  { day_of_week: 0, active: false },                                                                    # Sunday
+  { day_of_week: 1, start_time: "08:00", end_time: "17:00", break_start: "12:00", break_end: "13:00" }, # Monday
+  { day_of_week: 2, start_time: "08:00", end_time: "17:00", break_start: "12:00", break_end: "13:00" }, # Tuesday
+  { day_of_week: 3, start_time: "08:00", end_time: "17:00", break_start: "12:00", break_end: "13:00" }, # Wednesday
+  { day_of_week: 4, start_time: "08:00", end_time: "17:00", break_start: "12:00", break_end: "13:00" }, # Thursday
+  { day_of_week: 5, start_time: "08:00", end_time: "17:00", break_start: "12:00", break_end: "13:00" }, # Friday
+  { day_of_week: 6, start_time: "08:00", end_time: "12:00" }                                            # Saturday
+]
+
+schedules.each do |attrs|
+  DoctorSchedule.find_or_create_by!(day_of_week: attrs[:day_of_week]) do |schedule|
+    schedule.start_time = attrs[:start_time]
+    schedule.end_time = attrs[:end_time]
+    schedule.break_start = attrs[:break_start]
+    schedule.break_end = attrs[:break_end]
+    schedule.active = attrs.fetch(:active, true)
+  end
+end
+
+puts "Seeded #{DoctorSchedule.count} doctor schedule entries"
