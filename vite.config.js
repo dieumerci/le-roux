@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [
     react({
       jsxRuntime: 'automatic',
-      fastRefresh: true,
+      fastRefresh: false,
     }),
     RubyPlugin(),
   ],
