@@ -9,6 +9,15 @@ export default defineConfig({
     }),
     RubyPlugin(),
   ],
+  server: {
+    host: '127.0.0.1',
+    port: 3036,
+    strictPort: true,
+    hmr: {
+      host: '127.0.0.1',
+      port: 3036,
+    },
+  },
   resolve: {
     alias: {
       '@': '/app/javascript',
