@@ -8,4 +8,11 @@ Rails.application.routes.draw do
   # Dashboard
   root "pages#dashboard"
   get "dashboard", to: "pages#dashboard"
+
+  # Dashboard pages
+  resources :appointments, only: [:index, :show]
+  resources :patients, only: [:index, :show]
+  resources :conversations, only: [:index, :show]
+  get "analytics", to: "analytics#index"
+  get "settings", to: "settings#index"
 end

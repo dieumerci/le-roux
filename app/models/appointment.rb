@@ -1,5 +1,7 @@
 class Appointment < ApplicationRecord
   belongs_to :patient
+  has_one :cancellation_reason, dependent: :destroy
+  has_many :confirmation_logs, dependent: :destroy
 
   enum :status, {
     scheduled: 0,

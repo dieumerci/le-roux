@@ -24,9 +24,7 @@ module DrLerouxReceptionist
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
 
-    # Middleware like session, flash, cookies are needed for Inertia dashboard
+    # Session store for Inertia dashboard (middleware already included via rails/all)
     config.session_store :cookie_store, key: '_dr_leroux_receptionist_session'
-    config.middleware.use ActionDispatch::Cookies
-    config.middleware.use ActionDispatch::Session::CookieStore, config.session_options
   end
 end

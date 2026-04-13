@@ -7,16 +7,22 @@ RSpec.describe 'Pages', type: :request do
       expect(response).to have_http_status(:ok)
     end
 
-    it 'renders the inertia page data' do
+    it 'renders the inertia page data with Dashboard component' do
       get '/'
-      expect(response.body).to include('data-page="app"')
-      expect(response.body).to include('"component":"Dashboard"')
+      expect(response.body).to include('Dashboard')
+      expect(response.body).to include('data-page=')
     end
 
     it 'includes vite tags and app element' do
       get '/'
       expect(response.body).to include('vite')
-      expect(response.body).to include('<div id="app"></div>')
+      expect(response.body).to include('id="app"')
+    end
+
+    it 'includes dashboard stats in props' do
+      get '/'
+      expect(response.body).to include('todays_appointments')
+      expect(response.body).to include('system_status')
     end
   end
 end

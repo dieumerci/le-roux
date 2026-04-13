@@ -1,6 +1,7 @@
 class Patient < ApplicationRecord
   has_many :appointments, dependent: :destroy
   has_many :call_logs, dependent: :nullify
+  has_many :conversations, dependent: :destroy
 
   validates :first_name, presence: true
   validates :last_name, presence: true

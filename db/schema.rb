@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_13_082833) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_13_125749) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -46,6 +46,44 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_082833) do
     t.index ["twilio_call_sid"], name: "index_call_logs_on_twilio_call_sid", unique: true
   end
 
+  create_table "cancellation_reasons", force: :cascade do |t|
+    t.bigint "appointment_id", null: false
+    t.datetime "created_at", null: false
+    t.text "details"
+    t.string "reason_category", null: false
+    t.datetime "updated_at", null: false
+    t.index ["appointment_id"], name: "index_cancellation_reasons_on_appointment_id"
+    t.index ["reason_category"], name: "index_cancellation_reasons_on_reason_category"
+  end
+
+  create_table "confirmation_logs", force: :cascade do |t|
+    t.bigint "appointment_id", null: false
+    t.integer "attempts", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.boolean "flagged", default: false, null: false
+    t.string "method", null: false
+    t.text "notes"
+    t.string "outcome"
+    t.datetime "updated_at", null: false
+    t.index ["appointment_id"], name: "index_confirmation_logs_on_appointment_id"
+    t.index ["flagged"], name: "index_confirmation_logs_on_flagged"
+    t.index ["outcome"], name: "index_confirmation_logs_on_outcome"
+  end
+
+  create_table "conversations", force: :cascade do |t|
+    t.string "channel", null: false
+    t.datetime "created_at", null: false
+    t.datetime "ended_at"
+    t.jsonb "messages", default: []
+    t.bigint "patient_id", null: false
+    t.datetime "started_at"
+    t.string "status", default: "active", null: false
+    t.datetime "updated_at", null: false
+    t.index ["channel"], name: "index_conversations_on_channel"
+    t.index ["patient_id"], name: "index_conversations_on_patient_id"
+    t.index ["status"], name: "index_conversations_on_status"
+  end
+
   create_table "doctor_schedules", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.time "break_end"
@@ -73,4 +111,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_082833) do
 
   add_foreign_key "appointments", "patients"
   add_foreign_key "call_logs", "patients"
+  add_foreign_key "cancellation_reasons", "appointments"
+  add_foreign_key "confirmation_logs", "appointments"
+  add_foreign_key "conversations", "patients"
 end
