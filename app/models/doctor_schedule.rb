@@ -10,7 +10,9 @@ class DoctorSchedule < ApplicationRecord
   validate :break_within_working_hours
 
   scope :active, -> { where(active: true) }
-  scope :for_day, ->(day_number) { find_by(day_of_week: day_number, active: true) }
+  def self.for_day(day_number)
+    find_by(day_of_week: day_number, active: true)
+  end
 
   def day_name
     DAY_NAMES[day_of_week]
