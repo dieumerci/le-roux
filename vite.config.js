@@ -4,7 +4,14 @@ import RubyPlugin from 'vite-plugin-ruby'
 
 export default defineConfig({
   plugins: [
-    react(),
+    react({
+      jsxRuntime: 'automatic',
+    }),
     RubyPlugin(),
   ],
+  resolve: {
+    alias: {
+      '@': '/app/frontend',
+    },
+  },
 })
