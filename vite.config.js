@@ -6,13 +6,12 @@ export default defineConfig({
   plugins: [
     react({
       jsxRuntime: 'automatic',
-      fastRefresh: false,
     }),
     RubyPlugin(),
   ],
   resolve: {
     alias: {
-      '@': '/app/frontend',
+      '@': '/app/javascript',
     },
   },
   optimizeDeps: {

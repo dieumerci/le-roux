@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Dr Chalita le Roux — AI Receptionist</title>
+    <title data-inertia>Dr Chalita le Roux — AI Receptionist</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+
+    <%= vite_react_refresh_tag %>
     <%= vite_client_tag %>
-    <%= vite_javascript_tag "application.jsx" %>
+    <%= vite_stylesheet_tag "inertia.jsx", media: "all", "data-turbo-track": "reload" %>
+    <%= vite_javascript_tag "inertia.jsx" %>
+    <%= inertia_ssr_head %>
   </head>
 
   <body>
-    <%= inertia_root %>
+    <%= yield %>
   </body>
 </html>
