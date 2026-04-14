@@ -1,5 +1,6 @@
-import React, { useMemo, useRef } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { router } from '@inertiajs/react'
+import { Search } from 'lucide-react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -39,12 +40,33 @@ const formatRange = (start, end) => {
 
 export default function AppointmentCalendar({ appointments = [], onEventClick }) {
   const calendarRef = useRef(null)
+  const [search, setSearch] = useState('')
+
+  // Filter appointments client-side by search text. Looks at patient
+  // name, phone, reason, and status so a single input covers every
+  // useful case without a dedicated dropdown. Case-insensitive.
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return appointments
+    return appointments.filter((apt) => {
+      const haystack = [
+        apt.patient_name,
+        apt.patient_phone,
+        apt.reason,
+        apt.status,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return haystack.includes(q)
+    })
+  }, [appointments, search])
 
   // Rails prop shape → FullCalendar event object. Memoised so FC only
   // re-diffs on actual data change, not every parent render.
   const events = useMemo(
     () =>
-      appointments.map((apt) => {
+      filtered.map((apt) => {
         const theme = STATUS_THEMES[apt.status] || STATUS_THEMES.scheduled
         return {
           id: String(apt.id),
@@ -65,7 +87,7 @@ export default function AppointmentCalendar({ appointments = [], onEventClick })
           },
         }
       }),
-    [appointments]
+    [filtered]
   )
 
   // Drag-to-reschedule — PATCHes the server; reverts the UI drop on error.
@@ -131,6 +153,38 @@ export default function AppointmentCalendar({ appointments = [], onEventClick })
 
   return (
     <div className="appointment-calendar bg-white rounded-xl border border-gray-200 p-5">
+      {/* Search bar — filters the calendar client-side */}
+      <div className="mb-4">
+        <div className="relative max-w-sm">
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+          />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search patient, phone, reason…"
+            className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-8 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-taupe/25 focus:border-brand-taupe transition-colors"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs px-1"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        {search && (
+          <p className="text-xs text-gray-400 mt-1.5">
+            Showing {filtered.length} of {appointments.length} appointments
+          </p>
+        )}
+      </div>
+
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -145,12 +199,15 @@ export default function AppointmentCalendar({ appointments = [], onEventClick })
         eventDrop={handleEventDrop}
         eventClick={handleEventClick}
         eventContent={renderEventContent}
-        slotMinTime="07:00:00"
-        slotMaxTime="19:00:00"
+        slotMinTime="08:00:00"
+        slotMaxTime="18:00:00"
         allDaySlot={false}
         nowIndicator
-        height="auto"
-        expandRows
+        // Fixed pixel content height keeps the calendar compact in
+        // every view (week/day/month). FC adds the toolbar + day
+        // header above this, so total rendered height is ~contentHeight + 70.
+        contentHeight={480}
+        stickyHeaderDates
         slotDuration="00:30:00"
         weekends
         firstDay={1}

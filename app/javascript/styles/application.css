@@ -66,9 +66,8 @@
   color: #9CA3AF;
 }
 
-.appointment-calendar .fc .fc-timegrid-slot {
-  height: 3rem;
-}
+/* Leave slot height up to FullCalendar's contentHeight prop —
+ * we set it in JS so it scales consistently across week/day/month. */
 
 /* Let our custom eventContent fill the block completely; strip the
  * default FullCalendar padding, border, and dot/time rendering. */
