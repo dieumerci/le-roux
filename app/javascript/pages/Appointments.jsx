@@ -2,6 +2,18 @@ import React from 'react'
 import { Link, router } from '@inertiajs/react'
 import DashboardLayout from '../layouts/DashboardLayout'
 
+const STATUS_STYLES = {
+  scheduled:   'bg-amber-100 text-amber-800',
+  confirmed:   'bg-emerald-100 text-emerald-800',
+  completed:   'bg-blue-100 text-blue-800',
+  cancelled:   'bg-red-100 text-red-800',
+  no_show:     'bg-gray-100 text-gray-600',
+  rescheduled: 'bg-purple-100 text-purple-800',
+}
+
+const INPUT_CLASS =
+  'border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-taupe/25 focus:border-brand-taupe transition-colors'
+
 export default function Appointments({ appointments, filters, stats }) {
   const handleFilter = (key, value) => {
     router.get('/appointments', { ...filters, [key]: value || undefined }, { preserveState: true })
@@ -9,41 +21,39 @@ export default function Appointments({ appointments, filters, stats }) {
 
   return (
     <DashboardLayout>
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Appointments</h1>
-          <p className="text-gray-500 mt-1">{stats?.total ?? 0} total appointments</p>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-brand-brown">Appointments</h1>
+        <p className="text-gray-500 mt-1 text-sm">{stats?.total ?? 0} total appointments</p>
       </div>
 
       {/* Stats Row */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         {[
-          ['Scheduled', stats?.scheduled, 'yellow'],
-          ['Confirmed', stats?.confirmed, 'green'],
-          ['Completed', stats?.completed, 'blue'],
-          ['Cancelled', stats?.cancelled, 'red'],
+          ['Scheduled',  stats?.scheduled,  'text-amber-600'],
+          ['Confirmed',  stats?.confirmed,  'text-emerald-600'],
+          ['Completed',  stats?.completed,  'text-blue-600'],
+          ['Cancelled',  stats?.cancelled,  'text-red-500'],
         ].map(([label, count, color]) => (
-          <div key={label} className="bg-white rounded-lg border border-gray-200 p-4 text-center">
-            <p className={`text-2xl font-bold text-${color}-600`}>{count ?? 0}</p>
-            <p className="text-xs text-gray-500">{label}</p>
+          <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+            <p className={`text-2xl font-bold ${color}`}>{count ?? 0}</p>
+            <p className="text-xs text-gray-400 mt-1 uppercase tracking-wide">{label}</p>
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6 flex gap-4">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-5 flex gap-3">
         <input
           type="text"
-          placeholder="Search patient name or phone..."
+          placeholder="Search patient name or phone…"
           defaultValue={filters?.search || ''}
           onKeyDown={(e) => e.key === 'Enter' && handleFilter('search', e.target.value)}
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className={`flex-1 ${INPUT_CLASS}`}
         />
         <select
           value={filters?.status || ''}
           onChange={(e) => handleFilter('status', e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className={INPUT_CLASS}
         >
           <option value="">All Statuses</option>
           <option value="scheduled">Scheduled</option>
@@ -57,48 +67,55 @@ export default function Appointments({ appointments, filters, stats }) {
           type="date"
           value={filters?.date || ''}
           onChange={(e) => handleFilter('date', e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className={INPUT_CLASS}
         />
       </div>
 
       {/* Appointments Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Patient</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-100">
+          <thead>
+            <tr className="bg-gray-50">
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Patient</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Date & Time</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Reason</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y divide-gray-100">
             {appointments?.length > 0 ? appointments.map((apt) => (
-              <tr key={apt.id} className="hover:bg-gray-50">
+              <tr key={apt.id} className="hover:bg-brand-cream transition-colors">
                 <td className="px-6 py-4">
-                  <div className="text-sm font-medium text-gray-900">{apt.patient_name}</div>
-                  <div className="text-sm text-gray-500">{apt.patient_phone}</div>
+                  <p className="text-sm font-medium text-gray-900">{apt.patient_name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{apt.patient_phone}</p>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-900">
-                  <div>{new Date(apt.start_time).toLocaleDateString('en-ZA', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</div>
-                  <div className="text-gray-500">
+                <td className="px-6 py-4">
+                  <p className="text-sm text-gray-800">
+                    {new Date(apt.start_time).toLocaleDateString('en-ZA', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
                     {new Date(apt.start_time).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })} — {new Date(apt.end_time).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
-                  </div>
+                  </p>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600">{apt.reason || '—'}</td>
                 <td className="px-6 py-4">
                   <StatusBadge status={apt.status} />
                 </td>
                 <td className="px-6 py-4">
-                  <Link href={`/appointments/${apt.id}`} className="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
-                    View
+                  <Link
+                    href={`/appointments/${apt.id}`}
+                    className="text-brand-taupe hover:text-brand-brown text-sm font-medium transition-colors"
+                  >
+                    View →
                   </Link>
                 </td>
               </tr>
             )) : (
               <tr>
-                <td colSpan="5" className="px-6 py-12 text-center text-gray-400">No appointments found</td>
+                <td colSpan="5" className="px-6 py-12 text-center text-gray-400 text-sm">
+                  No appointments found
+                </td>
               </tr>
             )}
           </tbody>
@@ -109,17 +126,8 @@ export default function Appointments({ appointments, filters, stats }) {
 }
 
 function StatusBadge({ status }) {
-  const styles = {
-    scheduled: 'bg-yellow-100 text-yellow-800',
-    confirmed: 'bg-green-100 text-green-800',
-    completed: 'bg-blue-100 text-blue-800',
-    cancelled: 'bg-red-100 text-red-800',
-    no_show: 'bg-gray-100 text-gray-800',
-    rescheduled: 'bg-purple-100 text-purple-800',
-  }
-
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[status] || 'bg-gray-100 text-gray-600'}`}>
       {status}
     </span>
   )
