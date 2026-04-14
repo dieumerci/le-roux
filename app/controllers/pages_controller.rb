@@ -26,14 +26,7 @@ class PagesController < ApplicationController
       }
     end
 
-    render inertia: "Dashboard", props: page_data.merge(
-      system_status: {
-        database: true,
-        google_calendar: ENV["GOOGLE_CALENDAR_ID"].present?,
-        twilio: ENV["TWILIO_ACCOUNT_SID"].present?,
-        claude_ai: ENV["ANTHROPIC_API_KEY"].present?
-      }
-    )
+    render inertia: "Dashboard", props: page_data
   end
 
   private

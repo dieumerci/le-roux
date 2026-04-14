@@ -22,7 +22,7 @@ RSpec.describe 'Pages', type: :request do
     it 'includes dashboard stats in props' do
       get '/'
       expect(response.body).to include('todays_appointments')
-      expect(response.body).to include('system_status')
+      expect(response.body).to include('pending_confirmations')
     end
   end
 end

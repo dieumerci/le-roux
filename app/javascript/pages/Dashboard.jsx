@@ -16,7 +16,6 @@ export default function Dashboard({
   stats,
   todays_appointments = [],
   reminders = [],
-  system_status,
 }) {
   return (
     <DashboardLayout>
@@ -151,27 +150,6 @@ export default function Dashboard({
               No reminders — all set
             </p>
           )}
-        </div>
-      </div>
-
-      {/* System status */}
-      <div className="mt-6 bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="text-base font-semibold text-brand-brown mb-4">System Status</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            ['Database',         true],
-            ['Google Calendar',  system_status?.google_calendar],
-            ['Twilio WhatsApp',  system_status?.twilio],
-            ['Claude AI',        system_status?.claude_ai],
-          ].map(([name, connected]) => (
-            <div key={name} className="flex items-center justify-between py-1">
-              <span className="text-sm text-gray-600">{name}</span>
-              <span className={`flex items-center gap-1.5 text-sm font-medium ${connected ? 'text-emerald-600' : 'text-gray-400'}`}>
-                <span className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400' : 'bg-gray-300'}`} />
-                {connected ? 'Connected' : 'Pending'}
-              </span>
-            </div>
-          ))}
         </div>
       </div>
     </DashboardLayout>

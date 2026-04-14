@@ -360,11 +360,11 @@ Review the application for avoidable query explosions and fix them without intro
 
 Remove the System Status feature completely from the dashboard and side navigation so it no longer appears anywhere in the interface.
 
-- [ ] Remove the “System Status” panel from the dashboard
-- [ ] Remove any “System Status”, “System Online”, or related status indicator from the sidebar/navigation
-- [ ] Remove any now-unused props, controller data, or helper code that only existed to support the removed UI
-- [ ] Verify the layout still feels balanced after the removal
-- [ ] Create a conventional commit before moving to the global theme update
+- [x] Remove the “System Status” panel from the dashboard
+- [x] Remove any “System Status”, “System Online”, or related status indicator from the sidebar/navigation
+- [x] Remove any now-unused props, controller data, or helper code that only existed to support the removed UI
+- [x] Verify the layout still feels balanced after the removal
+- [x] Create a conventional commit before moving to the global theme update
 
 ## Phase 9.13: Blue Brand Palette Rollout & Dashboard Theme Refresh
 

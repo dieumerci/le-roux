@@ -77,7 +77,7 @@ export default function DashboardLayout({ children }) {
           })}
         </nav>
 
-        {/* Bottom — Settings / Support / Status */}
+        {/* Bottom — Settings / Support */}
         <div className="px-3 pb-4 border-t border-white/10 pt-3 space-y-0.5">
           <Link
             href="/settings"
@@ -105,13 +105,6 @@ export default function DashboardLayout({ children }) {
             <HelpCircle size={16} className="flex-shrink-0 text-white/40" />
             Support
           </button>
-
-          <div className="px-3 pt-2">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0 animate-pulse" />
-              <span className="text-white/35 text-xs select-none">System Online</span>
-            </div>
-          </div>
         </div>
       </aside>
 
