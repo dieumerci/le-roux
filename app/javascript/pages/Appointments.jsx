@@ -1,8 +1,11 @@
 import React, { useState } from 'react'
 import { Link, router } from '@inertiajs/react'
-import { CalendarDays, List } from 'lucide-react'
+import { CalendarDays, List, Plus } from 'lucide-react'
 import DashboardLayout from '../layouts/DashboardLayout'
 import AppointmentCalendar from '../components/AppointmentCalendar'
+import AppointmentDetailModal from '../components/AppointmentDetailModal'
+import AppointmentFormModal from '../components/AppointmentFormModal'
+import CancelAppointmentModal from '../components/CancelAppointmentModal'
 
 const STATUS_STYLES = {
   scheduled:   'bg-amber-100 text-amber-800',
@@ -19,12 +22,35 @@ const INPUT_CLASS =
 export default function Appointments({
   appointments,
   calendar_appointments = [],
+  patients = [],
   filters,
   stats,
 }) {
   // Local UI state — which view the user is looking at. Defaults to
   // the calendar (Schedule) per the premium-dashboard reference.
   const [view, setView] = useState('schedule')
+
+  // Modal state machine — at most one modal open at a time, so a
+  // single enum variable + a selected-appointment reference is
+  // enough. Transitions (e.g. Detail → Edit) just change the mode
+  // while keeping `selected` pointing at the same appointment.
+  const [modalMode, setModalMode] = useState(null) // 'detail' | 'create' | 'edit' | 'cancel' | null
+  const [selected, setSelected] = useState(null)
+
+  const openDetail = (apt) => { setSelected(apt); setModalMode('detail') }
+  const openCreate = () => { setSelected(null); setModalMode('create') }
+  const openEdit   = () => setModalMode('edit')
+  const openCancel = () => setModalMode('cancel')
+  const closeModal = () => { setModalMode(null); setSelected(null) }
+
+  // FullCalendar hands us an EventApi instance; we translate it back
+  // to the shape the modals expect (same keys the Rails serializer
+  // returns for `calendar_appointments`).
+  const handleEventClick = (event) => {
+    const id = Number(event.id)
+    const source = calendar_appointments.find((a) => a.id === id)
+    if (source) openDetail(source)
+  }
 
   const handleFilter = (key, value) => {
     router.get('/appointments', { ...filters, [key]: value || undefined }, { preserveState: true })
@@ -38,20 +64,29 @@ export default function Appointments({
           <p className="text-gray-500 mt-1 text-sm">{stats?.total ?? 0} total appointments</p>
         </div>
 
-        {/* View toggle */}
-        <div className="inline-flex items-center bg-gray-100 rounded-lg p-1">
-          <ViewTab
-            active={view === 'schedule'}
-            onClick={() => setView('schedule')}
-            icon={CalendarDays}
-            label="Schedule"
-          />
-          <ViewTab
-            active={view === 'list'}
-            onClick={() => setView('list')}
-            icon={List}
-            label="List"
-          />
+        <div className="flex items-center gap-3">
+          {/* View toggle */}
+          <div className="inline-flex items-center bg-gray-100 rounded-lg p-1">
+            <ViewTab
+              active={view === 'schedule'}
+              onClick={() => setView('schedule')}
+              icon={CalendarDays}
+              label="Schedule"
+            />
+            <ViewTab
+              active={view === 'list'}
+              onClick={() => setView('list')}
+              icon={List}
+              label="List"
+            />
+          </div>
+
+          <button
+            onClick={openCreate}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-brand-taupe hover:bg-brand-brown rounded-lg transition-colors"
+          >
+            <Plus size={15} /> New Appointment
+          </button>
         </div>
       </div>
 
@@ -71,7 +106,10 @@ export default function Appointments({
       </div>
 
       {view === 'schedule' ? (
-        <AppointmentCalendar appointments={calendar_appointments} />
+        <AppointmentCalendar
+          appointments={calendar_appointments}
+          onEventClick={handleEventClick}
+        />
       ) : (
         <>
           {/* Filters */}
@@ -156,6 +194,32 @@ export default function Appointments({
           </div>
         </>
       )}
+
+      {/* ── Modals ─────────────────────────────────────────────── */}
+      <AppointmentDetailModal
+        appointment={selected}
+        open={modalMode === 'detail'}
+        onClose={closeModal}
+        onEdit={openEdit}
+        onCancel={openCancel}
+      />
+      <AppointmentFormModal
+        mode="create"
+        open={modalMode === 'create'}
+        onClose={closeModal}
+        patients={patients}
+      />
+      <AppointmentFormModal
+        mode="edit"
+        appointment={selected}
+        open={modalMode === 'edit'}
+        onClose={closeModal}
+      />
+      <CancelAppointmentModal
+        appointment={selected}
+        open={modalMode === 'cancel'}
+        onClose={closeModal}
+      />
     </DashboardLayout>
   )
 }

@@ -20,13 +20,26 @@ RSpec.describe 'Appointments', type: :request do
       expect(appointment.end_time).to be_within(1.second).of(new_end)
     end
 
-    it 'rejects invalid times' do
+    it 'updates reason and notes without touching time' do
+      original_start = appointment.start_time
       patch appointment_path(appointment), params: {
-        appointment: { start_time: '', end_time: '' }
+        appointment: { reason: 'Root canal', notes: 'Anxious patient' }
       }
 
       expect(response).to have_http_status(:see_other)
-      expect(flash[:alert]).to include('Invalid')
+      appointment.reload
+      expect(appointment.reason).to eq('Root canal')
+      expect(appointment.notes).to eq('Anxious patient')
+      expect(appointment.start_time).to be_within(1.second).of(original_start)
+    end
+
+    it 'rejects invalid times' do
+      patch appointment_path(appointment), params: {
+        appointment: { start_time: 'not-a-date', end_time: '' }
+      }
+
+      expect(response).to have_http_status(:see_other)
+      expect(flash[:alert]).to be_present
     end
 
     it 'rejects end_time <= start_time' do
@@ -78,6 +91,89 @@ RSpec.describe 'Appointments', type: :request do
         appointment.reload
         expect(appointment.start_time).to be_within(1.second).of(new_start)
       end
+    end
+  end
+
+  describe 'POST /appointments' do
+    let!(:patient) { create(:patient) }
+    let(:start_at) { 5.days.from_now.change(hour: 9, min: 0) }
+    let(:end_at)   { 5.days.from_now.change(hour: 9, min: 30) }
+
+    before do
+      # Force the local-only branch for these specs — we don't want to
+      # hit the Google Calendar service here; it's covered by its own
+      # spec in spec/services.
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("GOOGLE_CALENDAR_ID").and_return(nil)
+    end
+
+    it 'creates a local appointment' do
+      expect {
+        post appointments_path, params: {
+          appointment: {
+            patient_id: patient.id,
+            start_time: start_at.iso8601,
+            end_time: end_at.iso8601,
+            reason: 'Cleaning'
+          }
+        }
+      }.to change(Appointment, :count).by(1)
+
+      expect(response).to have_http_status(:see_other)
+      appointment = Appointment.last
+      expect(appointment.patient).to eq(patient)
+      expect(appointment.reason).to eq('Cleaning')
+      expect(appointment.status).to eq('scheduled')
+    end
+
+    it 'rejects invalid times without creating anything' do
+      expect {
+        post appointments_path, params: {
+          appointment: {
+            patient_id: patient.id,
+            start_time: '',
+            end_time: ''
+          }
+        }
+      }.not_to change(Appointment, :count)
+
+      expect(response).to have_http_status(:see_other)
+      expect(flash[:alert]).to be_present
+    end
+  end
+
+  describe 'PATCH /appointments/:id/cancel' do
+    let!(:appointment) { create(:appointment) }
+
+    it 'marks the appointment as cancelled' do
+      patch cancel_appointment_path(appointment), params: {
+        cancellation: { category: 'cost', details: 'Too expensive' }
+      }
+
+      expect(response).to have_http_status(:see_other)
+      appointment.reload
+      expect(appointment.status).to eq('cancelled')
+      expect(appointment.cancellation_reason.reason_category).to eq('cost')
+      expect(appointment.cancellation_reason.details).to eq('Too expensive')
+    end
+
+    it 'cancels without a reason when none is given' do
+      patch cancel_appointment_path(appointment)
+
+      expect(response).to have_http_status(:see_other)
+      expect(appointment.reload.status).to eq('cancelled')
+      expect(appointment.cancellation_reason).to be_nil
+    end
+  end
+
+  describe 'PATCH /appointments/:id/confirm' do
+    let!(:appointment) { create(:appointment, status: :scheduled) }
+
+    it 'marks the appointment as confirmed' do
+      patch confirm_appointment_path(appointment)
+
+      expect(response).to have_http_status(:see_other)
+      expect(appointment.reload.status).to eq('confirmed')
     end
   end
 end
