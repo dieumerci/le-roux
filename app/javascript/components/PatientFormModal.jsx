@@ -143,8 +143,10 @@ export default function PatientFormModal({
 
     const opts = {
       preserveScroll: true,
-      onSuccess: () => {
-        toast.success(isEdit ? 'Patient updated' : 'Patient created')
+      preserveState: true,
+      onSuccess: (page) => {
+        const notice = page?.props?.flash?.notice
+        toast.success(notice || (isEdit ? 'Patient updated' : 'Patient created'))
         onClose?.()
       },
       onError: (errs) => {

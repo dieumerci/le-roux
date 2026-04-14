@@ -9,34 +9,47 @@ class PatientsController < ApplicationController
   ACTIVE_WINDOW_MONTHS = 6
 
   def index
-    patients = Patient
-      .includes(:appointments, :medical_history)
-      .order(:last_name, :first_name)
-      .limit(LIST_ROW_LIMIT)
+    page_data = dev_page_cache("patients", "index") do
+      patients = Patient
+        .includes(:appointments, :medical_history)
+        .order(:last_name, :first_name)
+        .limit(LIST_ROW_LIMIT)
+        .to_a
 
-    render inertia: "Patients", props: {
-      patients: patients.map { |p| patient_list_props(p) },
-      stats: {
-        total: Patient.count,
-        active: Patient.joins(:appointments)
-          .where("appointments.start_time >= ?", ACTIVE_WINDOW_MONTHS.months.ago)
-          .distinct.count,
-        new_this_month: Patient.where(created_at: Time.current.beginning_of_month..).count
+      stats = Rails.cache.fetch("patients/index/stats", expires_in: 30.seconds) do
+        {
+          total: Patient.count,
+          active: Appointment.where("start_time >= ?", ACTIVE_WINDOW_MONTHS.months.ago)
+            .distinct
+            .count(:patient_id),
+          new_this_month: Patient.where(created_at: Time.current.beginning_of_month..).count
+        }
+      end
+
+      {
+        patients: patients.map { |p| patient_list_props(p) },
+        stats: stats
       }
-    }
+    end
+
+    render inertia: "Patients", props: page_data
   end
 
   def show
-    patient = Patient.includes(:medical_history).find(params[:id])
-    appointments = patient.appointments.order(start_time: :desc).limit(20)
-    conversations = patient.conversations.order(updated_at: :desc).limit(10)
+    page_data = dev_page_cache("patients", "show", params[:id]) do
+      patient = Patient.includes(:medical_history).find(params[:id])
+      appointments = patient.appointments.order(start_time: :desc).limit(20)
+      conversations = patient.conversations.order(updated_at: :desc).limit(10)
 
-    render inertia: "PatientShow", props: {
-      patient: patient_detail_props(patient),
-      medical_history: medical_history_props(patient),
-      appointments: appointments.map { |a| appointment_props(a) },
-      conversations: conversations.map { |c| conversation_props(c) }
-    }
+      {
+        patient: patient_detail_props(patient),
+        medical_history: medical_history_props(patient),
+        appointments: appointments.map { |a| appointment_props(a) },
+        conversations: conversations.map { |c| conversation_props(c) }
+      }
+    end
+
+    render inertia: "PatientShow", props: page_data
   end
 
   # POST /patients
@@ -46,15 +59,20 @@ class PatientsController < ApplicationController
   # so we never end up with a patient row and an orphaned half-filled
   # medical_history row.
   def create
-    patient = Patient.new(patient_params)
+    result = PatientRegistrationService.new(attributes: patient_params).call
+    patient = result.patient
 
-    if patient.save
-      NotificationService.patient_created(patient)
+    if result.success?
+      expire_patient_caches!
+      NotificationService.patient_created(patient) if result.created?
       redirect_to patient_path(patient),
-        notice: "Patient created", status: :see_other
+        notice: patient_create_notice(result),
+        status: :see_other
     else
       redirect_back fallback_location: patients_path,
-        alert: patient.errors.full_messages.to_sentence, status: :see_other
+        alert: patient.errors.full_messages.to_sentence,
+        inertia: { errors: inertia_errors_for(patient) },
+        status: :see_other
     end
   end
 
@@ -71,18 +89,21 @@ class PatientsController < ApplicationController
     patient = Patient.find(params[:id])
 
     if patient.update(patient_params)
+      expire_patient_caches!
       redirect_back fallback_location: patient_path(patient),
         notice: "Patient updated", status: :see_other
     else
       redirect_back fallback_location: patient_path(patient),
-        alert: patient.errors.full_messages.to_sentence, status: :see_other
+        alert: patient.errors.full_messages.to_sentence,
+        inertia: { errors: inertia_errors_for(patient) },
+        status: :see_other
     end
   end
 
   private
 
   def patient_params
-    params.require(:patient).permit(
+    permitted = params.require(:patient).permit(
       :first_name, :last_name, :phone, :email, :date_of_birth, :notes,
       medical_history_attributes: [
         :id, :allergies, :chronic_conditions, :current_medications,
@@ -91,6 +112,29 @@ class PatientsController < ApplicationController
         :dental_notes, :last_dental_visit
       ]
     )
+
+    normalized = permitted.to_h
+    medical_history = normalized["medical_history_attributes"]
+    return normalized unless medical_history.is_a?(Hash)
+
+    cleaned = medical_history.compact_blank
+    if cleaned.except("id").empty?
+      normalized.delete("medical_history_attributes")
+      return normalized
+    end
+
+    normalized["medical_history_attributes"] = cleaned
+    normalized
+  end
+
+  def patient_create_notice(result)
+    return "Patient profile completed" if result.upgraded_placeholder?
+
+    "Patient created"
+  end
+
+  def inertia_errors_for(record)
+    record.errors.to_hash(true).transform_values { |messages| Array(messages).first }
   end
 
   # Props for the DataTable list — augments the base patient columns
@@ -197,5 +241,11 @@ class PatientsController < ApplicationController
       started_at: conversation.started_at&.iso8601,
       updated_at: conversation.updated_at.iso8601
     }
+  end
+
+  def expire_patient_caches!
+    expire_dev_page_cache("patients/index")
+    expire_dev_page_cache("patients/show")
+    Rails.cache.delete("patients/index/stats")
   end
 end

@@ -33,6 +33,28 @@ RSpec.describe 'Patients', type: :request do
       expect(response).to have_http_status(:see_other)
     end
 
+    it 'does not create an empty medical history row when nested fields are blank' do
+      expect {
+        post patients_path, params: {
+          patient: base_attrs.merge(
+            medical_history_attributes: {
+              allergies: nil,
+              chronic_conditions: nil,
+              current_medications: nil,
+              blood_type: nil,
+              emergency_contact_name: nil,
+              emergency_contact_phone: nil,
+              insurance_provider: nil,
+              insurance_policy_number: nil,
+              dental_notes: nil,
+              last_dental_visit: nil
+            }
+          )
+        }
+      }.to change(Patient, :count).by(1)
+        .and change(PatientMedicalHistory, :count).by(0)
+    end
+
     it 'creates a patient with nested medical history in one transaction' do
       expect {
         post patients_path, params: {
@@ -51,6 +73,37 @@ RSpec.describe 'Patients', type: :request do
       patient = Patient.last
       expect(patient.medical_history.allergies).to eq('Penicillin')
       expect(patient.medical_history.blood_type).to eq('O+')
+    end
+
+    it 'upgrades an auto-created placeholder patient with the same phone' do
+      placeholder = create(:patient,
+        first_name: 'WhatsApp',
+        last_name: 'Patient',
+        phone: base_attrs[:phone],
+        email: nil,
+        date_of_birth: nil,
+        notes: nil
+      )
+
+      expect {
+        post patients_path, params: {
+          patient: base_attrs.merge(
+            medical_history_attributes: {
+              allergies: 'Penicillin',
+              blood_type: 'O+'
+            }
+          )
+        }
+      }.not_to change(Patient, :count)
+
+      expect(response).to have_http_status(:see_other)
+      expect(response.headers['Location']).to end_with(patient_path(placeholder))
+
+      placeholder.reload
+      expect(placeholder.first_name).to eq('Alice')
+      expect(placeholder.last_name).to eq('Ndlovu')
+      expect(placeholder.email).to eq('alice@example.com')
+      expect(placeholder.medical_history&.blood_type).to eq('O+')
     end
 
     it 'rejects invalid phone numbers' do
@@ -72,6 +125,27 @@ RSpec.describe 'Patients', type: :request do
         }
       }.not_to change(Patient, :count)
     end
+
+    it 'does not overwrite an existing non-placeholder patient with the same phone' do
+      existing = create(:patient,
+        first_name: 'Existing',
+        last_name: 'Patient',
+        phone: base_attrs[:phone]
+      )
+
+      expect {
+        post patients_path,
+          params: { patient: base_attrs },
+          headers: { 'X-Inertia' => 'true', 'X-Requested-With' => 'XMLHttpRequest' }
+      }.not_to change(Patient, :count)
+
+      expect(response).to have_http_status(:see_other)
+      expect(session[:inertia_errors]).to include(phone: /already belongs/)
+
+      existing.reload
+      expect(existing.first_name).to eq('Existing')
+      expect(existing.last_name).to eq('Patient')
+    end
   end
 
   describe 'PATCH /patients/:id' do
@@ -85,6 +159,31 @@ RSpec.describe 'Patients', type: :request do
       expect(response).to have_http_status(:see_other)
       patient.reload
       expect(patient.first_name).to eq('Updated')
+    end
+
+    it 'does not create an empty medical history row when demographic-only edits submit blank nested fields' do
+      expect {
+        patch patient_path(patient), params: {
+          patient: {
+            first_name: 'Updated',
+            medical_history_attributes: {
+              allergies: nil,
+              chronic_conditions: nil,
+              current_medications: nil,
+              blood_type: nil,
+              emergency_contact_name: nil,
+              emergency_contact_phone: nil,
+              insurance_provider: nil,
+              insurance_policy_number: nil,
+              dental_notes: nil,
+              last_dental_visit: nil
+            }
+          }
+        }
+      }.not_to change(PatientMedicalHistory, :count)
+
+      expect(patient.reload.first_name).to eq('Updated')
+      expect(patient.medical_history).to be_nil
     end
 
     it 'creates a medical history on first edit' do

@@ -1,12 +1,10 @@
 # Dr Chalita le Roux AI Receptionist — Development Roadmap
 
-## Current Status: 🚀 13 of 18 Phases Complete
+## Current Status: 🚧 Dashboard Stabilization & UI Refresh Track Planned
 
-**Completed**: Phases 1-9, 9.5, 6, 7, 13 (Core system + Voice + Confirmations + Notifications + Dashboard UI)
-**Next Priority**: Phase 9.6 (Dashboard Full Feature Build)
-**Recommended**: Phase 10 (Import Historical Chats) — *backfill data so the dashboard is useful from day one*
-**Then**: Phase 11 (Data Capture & Analytics) — *capture real data before building advanced analytics*
-**Future**: Phase 12 (Billing), Phases 14-17 (Security, Training, Deployment, Enhancements)
+**Completed**: Phases 1-9, 9.5, 13 (core system + channel integrations + confirmations + current dashboard foundation)
+**Current Priority**: Phases 9.7-9.13 (audit, data integrity fixes, calendar polish, N+1 review, status removal, full blue theme rollout)
+**Deferred Until After This Track**: Phase 10 (Import Historical Chats), Phase 11 (Data Capture & Analytics), Phase 12 (Billing), Phases 14-17 (Security, Training, Deployment, Enhancements)
 
 ## Phase 1: Project Setup & Infrastructure
 - [x] Create Rails 8 API-only application
@@ -291,6 +289,107 @@ Build out the full interactive dashboard functionality on top of the Phase 9.5 b
 - [ ] **Reminders tab** on Appointment detail page: show scheduled reminder status (24h sent ✓ / 1h sent ✓ / pending)
 - [ ] Manual "Send Reminder Now" button: triggers `AppointmentReminder24hJob` or `AppointmentReminder1hJob` for a single appointment
 - [ ] Reminder log: timestamp of each reminder sent, delivery status (sent/failed)
+
+## Phase 9.7: Full Application Audit & Implementation Baseline
+
+Do a full audit before changing behavior. This phase exists to make the remaining work deliberate, minimal, and production-safe.
+
+- [x] Read `CLAUDE.md` carefully and align the work with its safety rules, debugging rules, and commit requirements
+- [x] Review the current `ROADMAP.md` structure and use the same phase/checklist format for all new work
+- [x] Audit the current application surface area: routes, controllers, models, services, Inertia pages, shared layouts, key dashboard components, and existing specs
+- [x] Review the provided dashboard/calendar screenshots and record them as the visual reference for this track
+- [x] Capture baseline reproduction steps for the broken patient creation flow
+- [ ] Capture baseline reproduction steps for the appointment/calendar visibility issue
+- [x] Record current N+1 hotspots, slow pages, and any known performance constraints before changing query behavior
+- [x] Summarize the smallest safe implementation plan for the next phases before touching production-facing flows
+- [ ] Create a conventional commit for the audit baseline before moving into bug-fix work
+
+## Phase 9.8: Patient Creation & Database Persistence Hardening
+
+Fix the patient creation flow at the root-cause level so new patient data is reliably persisted and validation failures are handled cleanly.
+
+- [x] Trace the full create-patient flow end to end: `PatientFormModal` → Inertia payload → `PatientsController#create` → `patient_params` → model validations → nested `medical_history` persistence → database write
+- [x] Reproduce the current failure with logs and confirm exactly which fields are being lost or rejected
+- [x] Verify that all patient fields are submitted correctly from the frontend and shaped correctly in the request payload
+- [x] Verify that strong parameters and nested attribute handling accept all intended fields
+- [x] Fix the root cause without changing unrelated patient behavior
+- [x] Ensure validation failures and server errors are surfaced cleanly in the UI
+- [x] Add or update tests for successful creation, validation failure handling, and nested medical history persistence
+- [x] Re-test patient create and patient edit flows to confirm existing working behavior is preserved
+- [x] Create a conventional commit before moving to the appointment flow
+
+## Phase 9.9: Appointment Creation, Persistence & Calendar Rendering Integrity
+
+Fix appointment creation so newly created records always appear in the calendar and the appointment lifecycle is consistent from form submission to visual rendering.
+
+- [ ] Trace the full appointment flow end to end: `AppointmentFormModal` → request payload → `AppointmentsController#create` → database/Google booking logic → Inertia props → `AppointmentCalendar`
+- [ ] Reproduce the current issue and confirm whether the failure is caused by persistence, page reload state, query scope, event mapping, or timezone handling
+- [ ] Verify that appointments are stored with the correct timestamps and timezone assumptions
+- [ ] Verify that the calendar queries the correct records and that newly created appointments are included in the returned dataset
+- [ ] Verify that event mapping in `AppointmentCalendar` matches the data shape returned by Rails
+- [ ] Fix the root cause so new appointments always appear in both the list view and the calendar view
+- [ ] Add or update tests for appointment creation, calendar payload integrity, and timezone-safe rendering assumptions
+- [ ] Re-test create, edit/reschedule, and cancel flows to confirm the calendar stays accurate
+- [ ] Create a conventional commit before moving to calendar polish
+
+## Phase 9.10: Calendar UI Restyle & Booking Presentation
+
+Refine the calendar so it matches the clean, premium booking/dashboard feel from the provided screenshot without copying it literally.
+
+- [ ] Audit the current calendar toolbar, spacing, surfaces, event cards, and empty states against the screenshot benchmark
+- [ ] Restyle the calendar shell so it feels like part of a polished clinic dashboard rather than a plain technical widget
+- [ ] Improve appointment card/event presentation for scanability: name, time, treatment/reason, spacing, and status hierarchy
+- [ ] Improve the calendar toolbar, controls, and surrounding card layout to match the screenshot’s clean SaaS composition
+- [ ] Keep the calendar visually aligned with the rest of the dashboard theme and card system
+- [ ] Verify the calendar remains readable and functional on desktop and smaller screen widths
+- [ ] Create a conventional commit before moving to performance work
+
+## Phase 9.11: N+1 Query Audit & Performance Hardening
+
+Review the application for avoidable query explosions and fix them without introducing over-fetching or behavior regressions.
+
+- [ ] Audit major pages for N+1 queries: dashboard, appointments, appointment detail, patients, patient detail, conversations, reminders, analytics, settings, and any calendar-related data loads
+- [ ] Check create/update flows that render associated records immediately after writes
+- [ ] Fix each confirmed N+1 with the appropriate eager loading or query restructuring strategy
+- [ ] Avoid loading unnecessary associations or broad datasets while fixing query counts
+- [ ] Add or update tests where practical to lock in the optimized query behavior
+- [ ] Re-run representative page requests and verify improved query counts and response times
+- [ ] Create a conventional commit before moving to UI cleanup
+
+## Phase 9.12: Remove “System Status” From the UI
+
+Remove the System Status feature completely from the dashboard and side navigation so it no longer appears anywhere in the interface.
+
+- [ ] Remove the “System Status” panel from the dashboard
+- [ ] Remove any “System Status”, “System Online”, or related status indicator from the sidebar/navigation
+- [ ] Remove any now-unused props, controller data, or helper code that only existed to support the removed UI
+- [ ] Verify the layout still feels balanced after the removal
+- [ ] Create a conventional commit before moving to the global theme update
+
+## Phase 9.13: Blue Brand Palette Rollout & Dashboard Theme Refresh
+
+Apply the new palette consistently across the app using the provided screenshots as the design-language reference for a clean, modern, trustworthy clinic dashboard.
+
+- [ ] Replace the current warm brown/taupe brand tokens with the new source-of-truth palette
+- [ ] Define and apply the palette consistently:
+  - Primary `#3164DE`
+  - Secondary `#769BF5`
+  - Accent light `#B1C5F6`
+  - Background light `#D6E0F8`
+  - White `#FFFFFF`
+  - Dark text `#393C4D`
+  - Muted text/borders `#8592AD`
+  - Success `#19A14E`
+  - Error/warning `#EF6161`
+- [ ] Restyle the sidebar, top navigation, cards, stats panels, forms, tables, modals, badges, and interactive controls to use the new palette consistently
+- [ ] Keep backgrounds light and airy, with white content surfaces and restrained use of saturated color
+- [ ] Use the primary blue for main CTAs, active navigation, highlights, and key interactive states
+- [ ] Use the softer blues for section backgrounds, subtle emphasis, selected states, and supportive accents
+- [ ] Keep headings and primary text high-contrast with `#393C4D`; use `#8592AD` for muted labels, borders, and helper copy
+- [ ] Restrict `#19A14E` and `#EF6161` to status communication only
+- [ ] Apply the new design direction to the calendar so it feels cohesive with the rest of the dashboard
+- [ ] Run a full consistency pass across the major pages and shared components
+- [ ] Create a conventional commit after the theme rollout is complete
 
 ## Phase 10: Import Historical WhatsApp Chats
 

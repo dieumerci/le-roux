@@ -1,4 +1,9 @@
 class Patient < ApplicationRecord
+  AUTO_CREATED_PLACEHOLDER_NAMES = [
+    ["WhatsApp", "Patient"],
+    ["Phone", "Caller"]
+  ].freeze
+
   has_many :appointments, dependent: :destroy
   has_many :call_logs, dependent: :nullify
   has_many :conversations, dependent: :destroy
@@ -18,6 +23,8 @@ class Patient < ApplicationRecord
   # is done by blanking the fields rather than deleting the row.
   accepts_nested_attributes_for :medical_history, update_only: true
 
+  before_validation :normalize_phone!
+
   validates :first_name, presence: true
   validates :last_name, presence: true
   validates :phone, presence: true, uniqueness: true,
@@ -33,5 +40,20 @@ class Patient < ApplicationRecord
   # without nil checks.
   def medical_history_or_build
     medical_history || build_medical_history
+  end
+
+  def auto_created_placeholder_profile?
+    AUTO_CREATED_PLACEHOLDER_NAMES.include?([first_name, last_name]) &&
+      email.blank? &&
+      date_of_birth.blank? &&
+      notes.blank? &&
+      !medical_history&.any_data?
+  end
+
+  private
+
+  def normalize_phone!
+    normalized = phone.to_s.gsub(/\s+/, "").presence
+    self.phone = normalized&.start_with?("+") ? normalized : normalized&.then { |value| "+#{value}" }
   end
 end
