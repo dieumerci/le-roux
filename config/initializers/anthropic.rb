@@ -1,4 +1,4 @@
 Anthropic.configure do |config|
   config.access_token = ENV.fetch("ANTHROPIC_API_KEY", "")
-  config.request_timeout = 2
+  config.request_timeout = 30  # Allow up to 30 seconds for Claude API
 end
