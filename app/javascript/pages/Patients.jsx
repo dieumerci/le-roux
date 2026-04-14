@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Link } from '@inertiajs/react'
-import { Eye, Users, UserCheck, UserPlus } from 'lucide-react'
+import { Eye, Pencil, Users, UserCheck, UserPlus, Plus } from 'lucide-react'
 import DashboardLayout from '../layouts/DashboardLayout'
 import DataTable from '../components/DataTable'
+import PatientFormModal from '../components/PatientFormModal'
 
 // Phase 9.6 sub-area #3 — Patients list rebuilt on the shared DataTable.
 // Columns match the reference screenshot: ID No. · Patient · Status · Due
@@ -15,6 +16,15 @@ const STATUS_OPTIONS = [
 ]
 
 export default function Patients({ patients = [], stats }) {
+  // Modal state machine: at most one modal open at a time, plus the
+  // patient being edited (null for create mode).
+  const [modalMode, setModalMode] = useState(null)  // 'create' | 'edit' | null
+  const [selected, setSelected]   = useState(null)
+
+  const openCreate = () => { setSelected(null); setModalMode('create') }
+  const openEdit   = (p) => { setSelected(p);   setModalMode('edit') }
+  const closeModal = () => { setModalMode(null); setSelected(null) }
+
   // Memoised columns — see Appointments.jsx for the same rationale
   // (prevents tanstack from re-instantiating and wiping sort/column state).
   const columns = useMemo(() => [
@@ -103,14 +113,25 @@ export default function Patients({ patients = [], stats }) {
       enableSorting: false,
       enableGlobalFilter: false,
       cell: ({ row }) => (
-        <Link
-          href={`/patients/${row.original.id}`}
-          title="View"
-          aria-label="View patient"
-          className="inline-flex p-1.5 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
-        >
-          <Eye size={15} />
-        </Link>
+        <div className="flex items-center gap-1">
+          <Link
+            href={`/patients/${row.original.id}`}
+            title="View"
+            aria-label="View patient"
+            className="inline-flex p-1.5 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
+          >
+            <Eye size={15} />
+          </Link>
+          <button
+            type="button"
+            title="Edit"
+            aria-label="Edit patient"
+            onClick={() => openEdit(row.original)}
+            className="inline-flex p-1.5 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
+          >
+            <Pencil size={15} />
+          </button>
+        </div>
       ),
     },
   ], [])
@@ -124,6 +145,12 @@ export default function Patients({ patients = [], stats }) {
             {stats?.total ?? 0} registered patients
           </p>
         </div>
+        <button
+          onClick={openCreate}
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-brand-taupe hover:bg-brand-brown rounded-lg transition-colors"
+        >
+          <Plus size={15} /> New Patient
+        </button>
       </div>
 
       {/* Stats Row */}
@@ -179,6 +206,21 @@ export default function Patients({ patients = [], stats }) {
             )}
           </>
         )}
+      />
+
+      {/* ── Patient form modal (Create / Edit) ──────────────── */}
+      <PatientFormModal
+        open={modalMode === 'create'}
+        mode="create"
+        onClose={closeModal}
+      />
+      <PatientFormModal
+        open={modalMode === 'edit'}
+        mode="edit"
+        patient={selected}
+        medicalHistory={selected?.medical_history}
+        bloodTypes={selected?.medical_history?.blood_types}
+        onClose={closeModal}
       />
     </DashboardLayout>
   )

@@ -10,9 +10,9 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_13_125749) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_14_110145) do
   # These are extensions that must be enabled in order to support this database
-  enable_extension "plpgsql"
+  enable_extension "pg_catalog.plpgsql"
 
   create_table "appointments", force: :cascade do |t|
     t.datetime "created_at", null: false
@@ -96,6 +96,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_125749) do
     t.index ["day_of_week"], name: "index_doctor_schedules_on_day_of_week", unique: true
   end
 
+  create_table "patient_medical_histories", force: :cascade do |t|
+    t.text "allergies"
+    t.string "blood_type"
+    t.text "chronic_conditions"
+    t.datetime "created_at", null: false
+    t.text "current_medications"
+    t.text "dental_notes"
+    t.string "emergency_contact_name"
+    t.string "emergency_contact_phone"
+    t.string "insurance_policy_number"
+    t.string "insurance_provider"
+    t.date "last_dental_visit"
+    t.bigint "patient_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["patient_id"], name: "index_patient_medical_histories_on_patient_id", unique: true
+  end
+
   create_table "patients", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "date_of_birth"
@@ -114,4 +131,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_125749) do
   add_foreign_key "cancellation_reasons", "appointments"
   add_foreign_key "confirmation_logs", "appointments"
   add_foreign_key "conversations", "patients"
+  add_foreign_key "patient_medical_histories", "patients"
 end

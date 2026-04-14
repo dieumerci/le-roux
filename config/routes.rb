@@ -28,7 +28,7 @@ Rails.application.routes.draw do
       patch :confirm
     end
   end
-  resources :patients, only: [:index, :show]
+  resources :patients, only: [:index, :show, :create, :update]
   resources :conversations, only: [:index, :show]
   get "analytics", to: "analytics#index"
   get "settings", to: "settings#index"
