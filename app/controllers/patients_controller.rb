@@ -49,6 +49,7 @@ class PatientsController < ApplicationController
     patient = Patient.new(patient_params)
 
     if patient.save
+      NotificationService.patient_created(patient)
       redirect_to patient_path(patient),
         notice: "Patient created", status: :see_other
     else

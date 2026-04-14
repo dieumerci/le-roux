@@ -66,22 +66,25 @@ class AppointmentsController < ApplicationController
         alert: "Invalid start or end time", status: :see_other
     end
 
-    if ENV["GOOGLE_CALENDAR_ID"].present?
-      GoogleCalendarService.new.book_appointment(
-        patient: patient,
-        start_time: start_at,
-        end_time: end_at,
-        reason: create_params[:reason]
-      )
-    else
-      patient.appointments.create!(
-        start_time: start_at,
-        end_time: end_at,
-        reason: create_params[:reason],
-        notes: create_params[:notes],
-        status: :scheduled
-      )
-    end
+    appointment =
+      if ENV["GOOGLE_CALENDAR_ID"].present?
+        GoogleCalendarService.new.book_appointment(
+          patient: patient,
+          start_time: start_at,
+          end_time: end_at,
+          reason: create_params[:reason]
+        )
+      else
+        patient.appointments.create!(
+          start_time: start_at,
+          end_time: end_at,
+          reason: create_params[:reason],
+          notes: create_params[:notes],
+          status: :scheduled
+        )
+      end
+
+    NotificationService.appointment_created(appointment) if appointment.is_a?(Appointment)
 
     redirect_back fallback_location: appointments_path,
       notice: "Appointment booked", status: :see_other
@@ -126,6 +129,8 @@ class AppointmentsController < ApplicationController
 
     sync_google_calendar(appointment) if attrs[:start_time].present?
 
+    NotificationService.appointment_rescheduled(appointment) if attrs[:start_time].present?
+
     redirect_back fallback_location: appointments_path,
       notice: "Appointment updated", status: :see_other
   rescue ActiveRecord::RecordInvalid => e
@@ -164,6 +169,8 @@ class AppointmentsController < ApplicationController
       end
     end
 
+    NotificationService.appointment_cancelled(appointment, reason: cancel_params[:category])
+
     redirect_back fallback_location: appointments_path,
       notice: "Appointment cancelled", status: :see_other
   rescue ActiveRecord::RecordInvalid => e
@@ -179,6 +186,7 @@ class AppointmentsController < ApplicationController
   def confirm
     appointment = Appointment.find(params[:id])
     appointment.confirmed!
+    NotificationService.appointment_confirmed(appointment)
     redirect_back fallback_location: appointments_path,
       notice: "Appointment confirmed", status: :see_other
   end

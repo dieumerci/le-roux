@@ -31,6 +31,15 @@ Rails.application.routes.draw do
   resources :patients, only: [:index, :show, :create, :update]
   resources :conversations, only: [:index, :show]
   get "search", to: "search#index"
+
+  resources :notifications, only: [:index] do
+    member do
+      patch :mark_read
+    end
+    collection do
+      post :mark_all_read
+    end
+  end
   get "analytics", to: "analytics#index"
   get "settings", to: "settings#index"
 end

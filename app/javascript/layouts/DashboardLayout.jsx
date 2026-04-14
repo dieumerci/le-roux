@@ -2,10 +2,11 @@ import React from 'react'
 import { Link, usePage } from '@inertiajs/react'
 import {
   LayoutDashboard, Calendar, Users, MessageSquare, BarChart2,
-  Settings, Bell, ChevronDown, HelpCircle,
+  Settings, ChevronDown, HelpCircle,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import GlobalSearch from '../components/GlobalSearch'
+import NotificationBell from '../components/NotificationBell'
 
 const NAV_ITEMS = [
   { name: 'Dashboard',     href: '/dashboard',     icon: LayoutDashboard },
@@ -124,14 +125,7 @@ export default function DashboardLayout({ children }) {
 
         {/* Right side — bell + doctor */}
         <div className="flex-1 flex items-center justify-end gap-2">
-          <button
-            className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Notifications"
-          >
-            <Bell size={18} />
-            {/* Notification dot — wire to real data in Phase 10+ */}
-            <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-brand-taupe rounded-full" />
-          </button>
+          <NotificationBell />
 
           <div className="w-px h-6 bg-gray-200 mx-1" />
 

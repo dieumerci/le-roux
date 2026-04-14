@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_14_110145) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_14_112623) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -96,6 +96,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_14_110145) do
     t.index ["day_of_week"], name: "index_doctor_schedules_on_day_of_week", unique: true
   end
 
+  create_table "notifications", force: :cascade do |t|
+    t.bigint "appointment_id"
+    t.text "body"
+    t.string "category", null: false
+    t.bigint "conversation_id"
+    t.datetime "created_at", null: false
+    t.string "level", default: "info", null: false
+    t.bigint "patient_id"
+    t.datetime "read_at"
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.string "url"
+    t.index ["appointment_id"], name: "index_notifications_on_appointment_id"
+    t.index ["category"], name: "index_notifications_on_category"
+    t.index ["conversation_id"], name: "index_notifications_on_conversation_id"
+    t.index ["created_at"], name: "index_notifications_on_created_at"
+    t.index ["patient_id"], name: "index_notifications_on_patient_id"
+    t.index ["read_at"], name: "index_notifications_on_unread", where: "(read_at IS NULL)"
+  end
+
   create_table "patient_medical_histories", force: :cascade do |t|
     t.text "allergies"
     t.string "blood_type"
@@ -131,5 +151,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_14_110145) do
   add_foreign_key "cancellation_reasons", "appointments"
   add_foreign_key "confirmation_logs", "appointments"
   add_foreign_key "conversations", "patients"
+  add_foreign_key "notifications", "appointments"
+  add_foreign_key "notifications", "conversations"
+  add_foreign_key "notifications", "patients"
   add_foreign_key "patient_medical_histories", "patients"
 end
