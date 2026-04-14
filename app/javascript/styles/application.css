@@ -2,23 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Brand design tokens — mirror of tailwind.config.js ───────────
+ * Phase 9.14 single source of truth. Tailwind classes
+ * (`bg-brand-primary`, `text-brand-muted`, etc.) resolve via the
+ * `theme.extend.colors.brand` block in tailwind.config.js. Non-
+ * Tailwind surfaces (FullCalendar variables, custom gradients,
+ * ::selection, etc.) read from the same palette via the CSS
+ * variables below — edit hex values in ONE place (tailwind.config.js)
+ * and keep these in sync.
+ */
+:root {
+  --brand-primary:         #0E9F9F;
+  --brand-primary-dark:    #0B8080;
+  --brand-accent:          #E6F7F7;
+  --brand-surface:         #F7F9FB;
+  --brand-white:           #FFFFFF;
+  --brand-ink:             #0F172A;
+  --brand-ink-soft:        #334155;
+  --brand-muted:           #64748B;
+  --brand-border:          #E2E8F0;
+  --brand-success:         #10B981;
+  --brand-warning:         #F59E0B;
+  --brand-danger:          #EF4444;
+
+  /* Derived tokens — translucent variants used for focus rings,
+   * current-time markers, ::selection highlights, etc. */
+  --brand-primary-ring:    rgba(14, 159, 159, 0.28);
+  --brand-primary-tint:    rgba(14, 159, 159, 0.08);
+  --brand-border-soft:     rgba(226, 232, 240, 0.70);
+}
+
 @layer base {
   html {
-    background: #D6E0F8;
+    background: var(--brand-surface);
   }
 
   body {
-    background:
-      radial-gradient(circle at top left, rgba(177, 197, 246, 0.42), transparent 32%),
-      linear-gradient(180deg, rgba(214, 224, 248, 0.8) 0%, #F8FAFF 32%, #FFFFFF 100%);
-    color: #393C4D;
+    background: var(--brand-surface);
+    color: var(--brand-ink);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   ::selection {
-    background: rgba(49, 100, 222, 0.16);
-    color: #393C4D;
+    background: var(--brand-primary-ring);
+    color: var(--brand-ink);
   }
 }
 
@@ -28,18 +56,18 @@
  * grid lines, card-style events (see AppointmentCalendar.jsx).
  */
 .appointment-calendar .fc {
-  --fc-border-color: rgba(177, 197, 246, 0.58);
-  --fc-today-bg-color: rgba(214, 224, 248, 0.48);
-  --fc-now-indicator-color: #3164DE;
-  --fc-page-bg-color: #FFFFFF;
-  --fc-neutral-bg-color: #FFFFFF;
-  --fc-button-bg-color: #FFFFFF;
-  --fc-button-border-color: rgba(177, 197, 246, 0.95);
-  --fc-button-text-color: #5E6B86;
-  --fc-button-hover-bg-color: #F8FAFF;
-  --fc-button-hover-border-color: #769BF5;
-  --fc-button-active-bg-color: #3164DE;
-  --fc-button-active-border-color: #3164DE;
+  --fc-border-color:              var(--brand-border);
+  --fc-today-bg-color:            var(--brand-primary-tint);
+  --fc-now-indicator-color:       var(--brand-primary);
+  --fc-page-bg-color:             var(--brand-white);
+  --fc-neutral-bg-color:          var(--brand-white);
+  --fc-button-bg-color:           var(--brand-white);
+  --fc-button-border-color:       var(--brand-border);
+  --fc-button-text-color:         var(--brand-ink-soft);
+  --fc-button-hover-bg-color:     var(--brand-surface);
+  --fc-button-hover-border-color: var(--brand-primary);
+  --fc-button-active-bg-color:    var(--brand-primary);
+  --fc-button-active-border-color: var(--brand-primary);
   font-family: inherit;
 }
 
@@ -60,7 +88,7 @@
   font-size: 1.625rem;
   font-weight: 600;
   letter-spacing: -0.03em;
-  color: #393C4D;
+  color: var(--brand-ink);
 }
 
 .appointment-calendar .fc .fc-button {
@@ -74,29 +102,29 @@
 }
 
 .appointment-calendar .fc .fc-button:focus {
-  box-shadow: 0 0 0 4px rgba(177, 197, 246, 0.42);
+  box-shadow: 0 0 0 4px var(--brand-primary-ring);
 }
 
 .appointment-calendar .fc .fc-button-primary:not(:disabled).fc-button-active {
-  color: #FFFFFF;
-  background-color: #3164DE;
-  border-color: #3164DE;
+  color: var(--brand-white);
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
 }
 
 .appointment-calendar .fc .fc-button-primary:not(:disabled):hover {
-  color: #393C4D;
+  color: var(--brand-ink);
 }
 
 .appointment-calendar .fc .fc-col-header-cell {
   padding: 1rem 0;
-  background: #F8FAFF;
-  border-bottom: 1px solid rgba(177, 197, 246, 0.58);
+  background: var(--brand-surface);
+  border-bottom: 1px solid var(--brand-border);
 }
 
 .appointment-calendar .fc .fc-col-header-cell-cushion {
   font-size: 0.72rem;
   font-weight: 600;
-  color: #8592AD;
+  color: var(--brand-muted);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   padding: 0.25rem 0.65rem;
@@ -105,17 +133,17 @@
 .appointment-calendar .fc .fc-timegrid-slot-label-cushion {
   font-size: 0.72rem;
   font-weight: 500;
-  color: #8592AD;
+  color: var(--brand-muted);
 }
 
 .appointment-calendar .fc .fc-scrollgrid {
   border-radius: 1.5rem;
   overflow: hidden;
-  border-color: rgba(177, 197, 246, 0.7);
+  border-color: var(--brand-border);
 }
 
 .appointment-calendar .fc .fc-timegrid-divider {
-  background: #F8FAFF;
+  background: var(--brand-surface);
 }
 
 /* Leave slot height up to FullCalendar's contentHeight prop —
@@ -157,7 +185,7 @@
 
 .appointment-calendar .fc .fc-theme-standard td,
 .appointment-calendar .fc .fc-theme-standard th {
-  border-color: rgba(177, 197, 246, 0.45);
+  border-color: var(--brand-border-soft);
 }
 
 @media (max-width: 1024px) {
