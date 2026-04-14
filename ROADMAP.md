@@ -2,9 +2,9 @@
 
 ## Current Status: 🚧 Dashboard Stabilization & UI Refresh Track Planned
 
-**Completed**: Phases 1-9, 9.5, 13 (core system + channel integrations + confirmations + current dashboard foundation)
-**Current Priority**: Phases 9.7-9.13 (audit, data integrity fixes, calendar polish, N+1 review, status removal, full blue theme rollout)
-**Deferred Until After This Track**: Phase 10 (Import Historical Chats), Phase 11 (Data Capture & Analytics), Phase 12 (Billing), Phases 14-17 (Security, Training, Deployment, Enhancements)
+**Completed**: Phases 1-9, 9.5, 9.7-9.12, 13 (core system + channel integrations + confirmations + current dashboard foundation + audit/data integrity/calendar/N+1/status removal)
+**Current Priority**: Phase 9.14 (Design System Consolidation & Production Hardening), then Phase 9.6 (Dashboard Full Feature Build verification), then Phase 10 (Import Historical Chats)
+**Deferred Until After This Track**: Phase 11 (Data Capture & Analytics), Phase 12 (Billing), Phases 14-17 (Security, Training, Deployment, Enhancements)
 
 ## Phase 1: Project Setup & Infrastructure
 - [x] Create Rails 8 API-only application
@@ -366,30 +366,83 @@ Remove the System Status feature completely from the dashboard and side navigati
 - [x] Verify the layout still feels balanced after the removal
 - [x] Create a conventional commit before moving to the global theme update
 
-## Phase 9.13: Blue Brand Palette Rollout & Dashboard Theme Refresh
+## Phase 9.14: Design System Consolidation & Production Hardening
 
-Apply the new palette consistently across the app using the provided screenshots as the design-language reference for a clean, modern, trustworthy clinic dashboard.
+Establish a single source of truth for styling, consolidate reusable components, remove all inline styles, and bring every page and interactive flow up to production quality. Reference screenshots: clean teal/white/grey dental-clinic dashboards (DentaClinic / Dentlo / Zendenta style) — restrained palette, white surfaces, soft grey borders, a single accent colour used sparingly for CTAs and active states.
 
-- [x] Replace the current warm brown/taupe brand tokens with the new source-of-truth palette
-- [x] Define and apply the palette consistently:
-  - Primary `#3164DE`
-  - Secondary `#769BF5`
-  - Accent light `#B1C5F6`
-  - Background light `#D6E0F8`
-  - White `#FFFFFF`
-  - Dark text `#393C4D`
-  - Muted text/borders `#8592AD`
-  - Success `#19A14E`
-  - Error/warning `#EF6161`
-- [x] Restyle the sidebar, top navigation, cards, stats panels, forms, tables, modals, badges, and interactive controls to use the new palette consistently
-- [x] Keep backgrounds light and airy, with white content surfaces and restrained use of saturated color
-- [x] Use the primary blue for main CTAs, active navigation, highlights, and key interactive states
-- [x] Use the softer blues for section backgrounds, subtle emphasis, selected states, and supportive accents
-- [x] Keep headings and primary text high-contrast with `#393C4D`; use `#8592AD` for muted labels, borders, and helper copy
-- [x] Restrict `#19A14E` and `#EF6161` to status communication only
-- [x] Apply the new design direction to the calendar so it feels cohesive with the rest of the dashboard
-- [x] Run a full consistency pass across the major pages and shared components
-- [x] Create a conventional commit after the theme rollout is complete
+### Design tokens — single source of truth
+- [ ] Replace `theme.extend.colors.brand` in `tailwind.config.js` with a clean teal/white/grey palette:
+  - Primary (teal) — CTAs, active nav, links, focus rings
+  - Primary-dark — hover states only
+  - Surface — app background (near-white, very soft tint)
+  - White — cards, modals, table rows
+  - Ink — primary text (near-black, high contrast)
+  - Muted — secondary text, borders, helper copy
+  - Border — divider/border grey
+  - Success / Warning / Danger — reserved strictly for status
+- [ ] Expose the same tokens as CSS variables in `app/javascript/styles/application.css` (`:root { --color-primary: ... }`) so non-Tailwind surfaces (FullCalendar overrides, third-party widgets) share one source of truth
+- [ ] Remove old Phase 9.13 blue token block and the Phase 9.5 brown/taupe/gold backwards-compat aliases once nothing references them
+- [ ] Document the palette in a short comment block at the top of `tailwind.config.js`
+
+### Zero inline styles audit
+- [ ] Grep the codebase for `style={{` and `style="` — eliminate every occurrence
+- [ ] Known offenders to fix:
+  - `app/javascript/components/DataTable.jsx` — header width inline style
+  - `app/javascript/pages/ConversationShow.jsx` — chat card `calc(100vh - 260px)` height
+- [ ] Replace dynamic sizing with Tailwind utilities or named CSS classes in `application.css`
+- [ ] Add a CI-friendly grep check (or a RuboCop-style reminder in CLAUDE.md) documenting the no-inline-styles rule
+
+### Reusable component library
+- [ ] `Button` — variants: primary, secondary, ghost, danger; sizes: sm, md, lg; icon slot; loading state
+- [ ] `Card` — standard white surface with consistent padding, border, shadow
+- [ ] `Badge` / `Chip` — status variants mapped to the token palette (success/warning/danger/info/neutral)
+- [ ] `Input`, `Textarea`, `Select`, `DatePicker` wrappers — consistent label/help/error layout, shared focus ring
+- [ ] `PageHeader` — title + subtitle + right actions, used on every page
+- [ ] `EmptyState` — icon + title + subtitle + optional action
+- [ ] `SectionTitle` — small uppercase label used above tables/cards
+- [ ] Refactor existing ad-hoc chips/buttons/cards on each page to use these shared components
+- [ ] Confirm `DataTable.jsx` is the single table implementation used by every list (Appointments, Patients, Conversations, Reminders, Analytics recent events)
+
+### Page-by-page refactor to the new tokens + components
+- [ ] `Dashboard.jsx`
+- [ ] `Appointments.jsx` + `AppointmentShow.jsx`
+- [ ] `Patients.jsx` + `PatientShow.jsx`
+- [ ] `Conversations.jsx` + `ConversationShow.jsx`
+- [ ] `Reminders.jsx`
+- [ ] `Analytics.jsx`
+- [ ] `Settings.jsx`
+- [ ] `Login.jsx`
+- [ ] Shared: `DashboardLayout`, `Sidebar`, `Topbar`, `NotificationBell`, `GlobalSearch`, `Modal`, all form modals (`PatientFormModal`, `AppointmentFormModal`, `CancelAppointmentModal`, `AppointmentDetailModal`)
+
+### Calendar UI polish (reference: user-provided booking calendar screenshot)
+- [ ] Restyle `AppointmentCalendar.jsx` + `appointment-calendar.css` to the new tokens
+- [ ] Clean week/day/month toolbar matching the reference (rounded pill buttons, muted borders, generous spacing)
+- [ ] Event cards show patient name, time, and reason with clear hierarchy
+- [ ] Colour-coded event status (confirmed / pending / cancelled) using the token palette only
+- [ ] Current-time indicator and today-column highlight use the primary accent
+- [ ] Verify drag-and-drop reschedule still works and writes through to the backend
+
+### Production-readiness verification (end-to-end flows)
+- [ ] **Appointment create** → saves → appears immediately on the calendar and in the Appointments list; syncs to Google Calendar when configured
+- [ ] **Appointment edit/reschedule** → updates in list + calendar + Google
+- [ ] **Appointment cancel** → captures reason, updates status, removes from active calendar view, fires notification
+- [ ] **Patient create / edit** → validation errors surface inline; nested medical history persists
+- [ ] **Notifications** fire automatically on: new booking, cancellation, flagged patient, incoming WhatsApp message, confirmation failure — visible in the bell dropdown with unread count
+- [ ] **Reminders** (24h / 1h) send on schedule and update the reminder log on the appointment detail page
+- [ ] **Global search** returns patients, appointments, and conversations
+- [ ] Verify every page handles empty states, loading states, and server errors cleanly
+
+### Patient model — optional extra fields
+- [ ] Migration: add optional columns to `patients` — `address`, `city`, `postal_code`, `id_number`, `gender`, `occupation`, `preferred_language`, `referral_source`, `marketing_consent`
+- [ ] Update `patient_params` strong parameters
+- [ ] Add the fields to `PatientFormModal` (Edit) as an "Additional details" collapsible section
+- [ ] Display populated fields on `PatientShow.jsx`
+- [ ] Spec: create/update with the new fields persists and renders
+
+### Commit cadence
+- [ ] Commit the roadmap update first (`docs(roadmap): add Phase 9.14 design consolidation, drop Phase 9.13 blue rollout`)
+- [ ] Commit after each sub-area (tokens, inline-style purge, component library, per-page refactor batches, calendar, production verification, patient fields)
+- [ ] Run `bundle exec rspec` and `npx vite build` before each commit
 
 ## Phase 10: Import Historical WhatsApp Chats
 
