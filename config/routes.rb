@@ -8,6 +8,13 @@ Rails.application.routes.draw do
   # Webhooks
   namespace :webhooks do
     post "whatsapp", to: "whatsapp#incoming"
+
+    # Voice call webhooks
+    post "voice",                     to: "voice#incoming"
+    post "voice/gather",              to: "voice#gather"
+    post "voice/status",              to: "voice#status"
+    post "voice/confirmation",        to: "voice#confirmation"
+    post "voice/confirmation_gather", to: "voice#confirmation_gather"
   end
 
   # Dashboard
