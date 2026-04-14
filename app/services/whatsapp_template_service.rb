@@ -69,6 +69,29 @@ class WhatsappTemplateService
     })
   end
 
+  # Phase 10.1 — Free-form outbound WhatsApp message.
+  #
+  # Unlike the template helpers above, this sends a plain-text body
+  # without a pre-approved Twilio Content SID. Twilio only permits
+  # free-form messages inside the 24-hour customer service window
+  # (i.e. the patient has messaged us within the last 24 hours); if
+  # the window has expired Twilio will return a 63016-style error
+  # and this method will surface it as Error so the caller can show
+  # the receptionist a useful message.
+  def send_text(to_phone, body)
+    raise Error, "message body cannot be blank" if body.to_s.strip.empty?
+
+    formatted_phone = format_phone(to_phone)
+    @client.messages.create(
+      from: @from,
+      to:   "whatsapp:#{formatted_phone}",
+      body: body
+    )
+  rescue Twilio::REST::TwilioError => e
+    Rails.logger.error("[WhatsApp] Failed to send free-form text to #{to_phone}: #{e.message}")
+    raise Error, "Failed to send WhatsApp message: #{e.message}"
+  end
+
   # Send flagged patient alert to reception
   # Variables: {{1}} patient_name, {{2}} phone, {{3}} reason
   def send_flagged_alert(patient, reason)

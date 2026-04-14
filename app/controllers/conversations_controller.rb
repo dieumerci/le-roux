@@ -35,6 +35,41 @@ class ConversationsController < ApplicationController
     redirect_to conversations_path, alert: "Import failed: #{e.message}", status: :see_other
   end
 
+  # POST /conversations/:id/reply
+  #
+  # Phase 10.1 — Receptionist-initiated WhatsApp reply from inside
+  # the conversation detail page. Takes a plain-text `body`, sends
+  # it out via WhatsappTemplateService#send_text (free-form, not a
+  # template), and appends it to the JSONB messages array as an
+  # "assistant" entry so the transcript stays consistent with the
+  # existing webhook-driven flow.
+  def reply
+    conversation = Conversation.includes(:patient).find(params[:id])
+    body = params[:body].to_s.strip
+
+    if body.blank?
+      return redirect_back fallback_location: conversation_path(conversation),
+        alert: "Reply cannot be empty.", status: :see_other
+    end
+
+    if conversation.channel != "whatsapp"
+      return redirect_back fallback_location: conversation_path(conversation),
+        alert: "Replies are only supported on WhatsApp conversations.",
+        status: :see_other
+    end
+
+    WhatsappTemplateService.new.send_text(conversation.patient.phone, body)
+    conversation.add_message(role: "assistant", content: body, timestamp: Time.current)
+    conversation.update!(status: "active") if conversation.status == "closed"
+
+    redirect_to conversation_path(conversation),
+      notice: "Reply sent to #{conversation.patient.full_name}.",
+      status: :see_other
+  rescue WhatsappTemplateService::Error => e
+    redirect_back fallback_location: conversation_path(params[:id]),
+      alert: "Send failed: #{e.message}", status: :see_other
+  end
+
   def show
     conversation = Conversation.includes(:patient).find(params[:id])
 
@@ -74,13 +109,16 @@ class ConversationsController < ApplicationController
   end
 
   def detailed_conversation_props(conversation)
+    patient = conversation.patient
     {
       id: conversation.id,
-      patient_name: conversation.patient.full_name,
-      patient_phone: conversation.patient.phone,
+      patient_name: patient.full_name.presence || patient.phone,
+      patient_phone: patient.phone,
       patient_id: conversation.patient_id,
       channel: conversation.channel,
       status: conversation.status,
+      source: conversation.source,
+      topic: conversation.topic,
       messages: conversation.messages || [],
       started_at: conversation.started_at&.iso8601,
       ended_at: conversation.ended_at&.iso8601

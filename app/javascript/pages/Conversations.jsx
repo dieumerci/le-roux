@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
 import {
-  MessageSquare, Search, Upload, History, ExternalLink,
+  MessageSquare, Search, Upload,
   ChevronLeft, ChevronRight, Clock, X as XIcon,
 } from 'lucide-react'
 import DashboardLayout from '../layouts/DashboardLayout'
@@ -160,16 +160,10 @@ export default function Conversations({ conversations = [], filters }) {
 }
 
 function ConversationRow({ conv }) {
-  const openWhatsApp = () => {
-    if (conv.whatsapp_url) {
-      window.open(conv.whatsapp_url, '_blank', 'noopener,noreferrer')
-    } else {
-      toast.error('No phone number on file')
-    }
-  }
-
-  const openHistory = (e) => {
-    e.stopPropagation()
+  // Row click → open the internal transcript. The receptionist can
+  // read the full exchange and reply from within the app; we no
+  // longer bounce out to wa.me on primary click.
+  const openConversation = () => {
     router.visit(`/conversations/${conv.id}`)
   }
 
@@ -178,7 +172,7 @@ function ConversationRow({ conv }) {
 
   return (
     <li
-      onClick={openWhatsApp}
+      onClick={openConversation}
       className="flex items-center gap-3 px-5 py-3.5 hover:bg-brand-cream/30 transition-colors cursor-pointer group"
     >
       {/* Channel icon */}
@@ -228,23 +222,9 @@ function ConversationRow({ conv }) {
         </span>
       </div>
 
-      {/* Actions */}
-      <div className="w-20 flex items-center justify-end gap-1 flex-shrink-0">
-        <button
-          type="button"
-          onClick={openHistory}
-          title="View internal transcript"
-          aria-label="View internal transcript"
-          className="p-2 rounded-md text-gray-400 hover:text-brand-brown hover:bg-brand-cream"
-        >
-          <History size={14} />
-        </button>
-        <span
-          title="Opens in WhatsApp"
-          className="p-2 rounded-md text-gray-300 group-hover:text-emerald-600"
-        >
-          <ExternalLink size={14} />
-        </span>
+      {/* Message count */}
+      <div className="w-20 flex items-center justify-end flex-shrink-0">
+        <span className="text-[11px] text-gray-400">{conv.message_count} msgs</span>
       </div>
     </li>
   )

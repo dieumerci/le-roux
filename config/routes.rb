@@ -33,6 +33,9 @@ Rails.application.routes.draw do
     collection do
       post :import
     end
+    member do
+      post :reply
+    end
   end
   get "search", to: "search#index"
 
