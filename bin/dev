@@ -1,13 +1,49 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
+
+RAILS_PID=""
+VITE_PID=""
+
+port_pid() {
+  lsof -tiTCP:"$1" -sTCP:LISTEN 2>/dev/null | head -n 1
+}
+
+port_command() {
+  ps -p "$1" -o command= 2>/dev/null
+}
+
+cleanup() {
+  [[ -n "${RAILS_PID}" ]] && kill "${RAILS_PID}" 2>/dev/null || true
+  [[ -n "${VITE_PID}" ]] && kill "${VITE_PID}" 2>/dev/null || true
+}
+
+trap cleanup EXIT INT TERM
+
+if existing_rails_pid=$(port_pid 3000); [[ -n "${existing_rails_pid}" ]]; then
+  echo "Port 3000 is already in use by PID ${existing_rails_pid}."
+  echo "Stop the existing Rails server before running bin/dev again."
+  exit 1
+fi
 
 echo "Starting Rails on port 3000..."
 bin/rails server -p 3000 &
 RAILS_PID=$!
 
-echo "Starting Vite dev server on port 3036..."
-npm run dev &
-VITE_PID=$!
+if existing_vite_pid=$(port_pid 3036); [[ -n "${existing_vite_pid}" ]]; then
+  existing_vite_command=$(port_command "${existing_vite_pid}")
+
+  if [[ "${existing_vite_command}" == *"vite"* ]]; then
+    echo "Reusing existing Vite dev server on port 3036 (PID ${existing_vite_pid})."
+  else
+    echo "Port 3036 is already in use by PID ${existing_vite_pid}: ${existing_vite_command}"
+    echo "Stop that process before running bin/dev again."
+    exit 1
+  fi
+else
+  echo "Starting Vite dev server on port 3036..."
+  npm run dev &
+  VITE_PID=$!
+fi
 
 echo ""
 echo "========================================="
@@ -20,8 +56,10 @@ echo "Press Ctrl+C to stop both servers"
 echo "========================================="
 echo ""
 
-# Wait for both processes
-wait $RAILS_PID $VITE_PID
+wait_pids=("${RAILS_PID}")
 
-# Cleanup on exit
-trap "kill $RAILS_PID $VITE_PID 2>/dev/null" EXIT
+if [[ -n "${VITE_PID}" ]]; then
+  wait_pids+=("${VITE_PID}")
+fi
+
+wait "${wait_pids[@]}"

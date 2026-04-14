@@ -1,5 +1,7 @@
 class AiService
   INTENTS = %w[book reschedule cancel confirm faq objection urgent other].freeze
+  RETRYABLE_STATUS_CODES = [429, 500, 502, 503, 504, 529].freeze
+  MAX_RETRIES = 0
 
   PRICING = {
     "consultation" => "R850 (includes x-rays)",
@@ -18,21 +20,23 @@ class AiService
   class Error < StandardError; end
 
   def initialize
-    @client = Anthropic::Client.new(api_key: ENV.fetch("ANTHROPIC_API_KEY"))
+    @client = Anthropic::Client.new(access_token: ENV.fetch("ANTHROPIC_API_KEY"))
   end
 
   # Classify the intent of a patient message.
   # Returns a hash: { intent:, entities: { date:, time:, name:, treatment: } }
-  def classify_intent(message)
-    response = @client.messages.create(
+  def classify_intent(message, conversation_history: [])
+    messages = build_messages(conversation_history, message)
+
+    response = create_message(
       model: "claude-sonnet-4-20250514",
       max_tokens: 256,
       system: intent_classification_prompt,
-      messages: [{ role: "user", content: message }]
+      messages: messages
     )
 
     parse_intent_response(response)
-  rescue Anthropic::Error => e
+  rescue Anthropic::Error, Faraday::Error => e
     raise Error, "Intent classification failed: #{e.message}"
   end
 
@@ -42,7 +46,7 @@ class AiService
     system = build_system_prompt(patient: patient, context: context)
     messages = build_messages(conversation_history, message)
 
-    response = @client.messages.create(
+    response = create_message(
       model: "claude-sonnet-4-20250514",
       max_tokens: 1024,
       system: system,
@@ -50,13 +54,13 @@ class AiService
     )
 
     extract_text(response)
-  rescue Anthropic::Error => e
+  rescue Anthropic::Error, Faraday::Error => e
     raise Error, "Response generation failed: #{e.message}"
   end
 
   # Extract structured entities from a message (date, time, name, treatment).
   def extract_entities(message)
-    response = @client.messages.create(
+    response = create_message(
       model: "claude-sonnet-4-20250514",
       max_tokens: 256,
       system: entity_extraction_prompt,
@@ -64,16 +68,17 @@ class AiService
     )
 
     parse_entities_response(response)
-  rescue Anthropic::Error => e
+  rescue Anthropic::Error, Faraday::Error => e
     raise Error, "Entity extraction failed: #{e.message}"
   end
 
   # Handle a full conversation turn: classify, respond, and return structured result.
   def process_message(message:, conversation: nil, patient: nil)
-    classification = classify_intent(message)
-    context = { intent: classification[:intent], entities: classification[:entities] }
-
     history = conversation&.messages&.map { |m| { role: m["role"], content: m["content"] } } || []
+
+    # Classify intent WITH conversation history for better multi-turn understanding
+    classification = classify_intent(message, conversation_history: history)
+    context = { intent: classification[:intent], entities: classification[:entities] }
 
     response_text = generate_response(
       message: message,
@@ -84,8 +89,10 @@ class AiService
 
     # Store messages in conversation if provided
     if conversation
-      conversation.add_message(role: "user", content: message)
-      conversation.add_message(role: "assistant", content: response_text)
+      conversation.add_messages([
+        { role: "user", content: message },
+        { role: "assistant", content: response_text }
+      ])
     end
 
     {
@@ -96,6 +103,24 @@ class AiService
   end
 
   private
+
+  def create_message(**parameters)
+    attempts = 0
+
+    begin
+      attempts += 1
+      @client.messages(parameters: parameters)
+    rescue Faraday::Error => e
+      raise unless retryable_error?(e) && attempts <= MAX_RETRIES
+
+      sleep(0.25 * attempts)
+      retry
+    end
+  end
+
+  def retryable_error?(error)
+    RETRYABLE_STATUS_CODES.include?(error.response_status || error.response&.dig(:status))
+  end
 
   def intent_classification_prompt
     <<~PROMPT
@@ -219,6 +244,6 @@ class AiService
   end
 
   def extract_text(response)
-    response.content.first.text
+    response.dig("content", 0, "text")
   end
 end

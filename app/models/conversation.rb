@@ -9,8 +9,20 @@ class Conversation < ApplicationRecord
   scope :recent, -> { order(updated_at: :desc) }
 
   def add_message(role:, content:, timestamp: Time.current)
+    add_messages([{ role: role, content: content, timestamp: timestamp }])
+  end
+
+  def add_messages(entries)
     self.messages ||= []
-    self.messages << { role: role, content: content, timestamp: timestamp.iso8601 }
+
+    entries.each do |entry|
+      self.messages << {
+        role: entry.fetch(:role),
+        content: entry.fetch(:content),
+        timestamp: entry.fetch(:timestamp, Time.current).iso8601
+      }
+    end
+
     save!
   end
 

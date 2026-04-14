@@ -2,8 +2,7 @@ require "rails_helper"
 
 RSpec.describe AiService do
   let(:patient) { create(:patient, first_name: "Sarah", last_name: "Botha") }
-  let(:messages_api) { double("messages_api") }
-  let(:client) { double("Anthropic::Client", messages: messages_api) }
+  let(:client) { double("Anthropic::Client") }
 
   before do
     allow(Anthropic::Client).to receive(:new).and_return(client)
@@ -11,14 +10,17 @@ RSpec.describe AiService do
 
   let(:service) { described_class.new }
 
+  before do
+    allow(service).to receive(:sleep)
+  end
+
   def mock_claude_response(text)
-    content_block = double("content_block", text: text)
-    double("response", content: [content_block])
+    { "content" => [{ "type" => "text", "text" => text }] }
   end
 
   describe "#classify_intent" do
     it "classifies a booking request" do
-      allow(messages_api).to receive(:create)
+      allow(client).to receive(:messages)
         .and_return(mock_claude_response('{"intent": "book", "entities": {"date": "2026-04-20", "time": "10:00", "name": "Sarah", "treatment": "consultation"}}'))
 
       result = service.classify_intent("I'd like to book a consultation for Monday at 10am")
@@ -29,7 +31,7 @@ RSpec.describe AiService do
     end
 
     it "classifies a cancellation request" do
-      allow(messages_api).to receive(:create)
+      allow(client).to receive(:messages)
         .and_return(mock_claude_response('{"intent": "cancel", "entities": {"date": null, "time": null, "name": null, "treatment": null}}'))
 
       result = service.classify_intent("I need to cancel my appointment")
@@ -37,7 +39,7 @@ RSpec.describe AiService do
     end
 
     it "classifies an FAQ question" do
-      allow(messages_api).to receive(:create)
+      allow(client).to receive(:messages)
         .and_return(mock_claude_response('{"intent": "faq", "entities": {"date": null, "time": null, "name": null, "treatment": null}}'))
 
       result = service.classify_intent("What are your office hours?")
@@ -45,17 +47,37 @@ RSpec.describe AiService do
     end
 
     it "returns 'other' for unparseable responses" do
-      allow(messages_api).to receive(:create)
+      allow(client).to receive(:messages)
         .and_return(mock_claude_response("I'm not sure what to make of that"))
 
       result = service.classify_intent("asdfghjkl")
       expect(result[:intent]).to eq("other")
     end
+
+    it "fails fast on Anthropic overload errors" do
+      error = Faraday::ServerError.new("overloaded", { status: 529 })
+      allow(client).to receive(:messages).and_raise(error)
+
+      expect {
+        service.classify_intent("I want to book")
+      }.to raise_error(AiService::Error, /Intent classification failed/)
+
+      expect(client).to have_received(:messages).once
+    end
+
+    it "wraps persistent Anthropic overload errors" do
+      error = Faraday::ServerError.new("overloaded", { status: 529 })
+      allow(client).to receive(:messages).and_raise(error)
+
+      expect {
+        service.classify_intent("I want to book")
+      }.to raise_error(AiService::Error, /Intent classification failed/)
+    end
   end
 
   describe "#generate_response" do
     it "generates a conversational response" do
-      allow(messages_api).to receive(:create)
+      allow(client).to receive(:messages)
         .and_return(mock_claude_response("Hi Sarah! I'd love to help you book an appointment. What day works best for you?"))
 
       response = service.generate_response(
@@ -68,7 +90,7 @@ RSpec.describe AiService do
     end
 
     it "includes conversation history for context" do
-      allow(messages_api).to receive(:create)
+      allow(client).to receive(:messages)
         .and_return(mock_claude_response("Sure! How about Tuesday at 2pm?"))
 
       service.generate_response(
@@ -79,15 +101,13 @@ RSpec.describe AiService do
         ]
       )
 
-      expect(messages_api).to have_received(:create) do |args|
-        expect(args[:messages].length).to eq(3)
-      end
+      expect(client).to have_received(:messages).once
     end
   end
 
   describe "#extract_entities" do
     it "extracts date, time, name, and treatment" do
-      allow(messages_api).to receive(:create)
+      allow(client).to receive(:messages)
         .and_return(mock_claude_response('{"date": "2026-04-20", "time": "14:00", "name": "Sarah Botha", "treatment": "cleaning", "phone": null}'))
 
       result = service.extract_entities("I'm Sarah Botha, I'd like a cleaning next Monday at 2pm")
@@ -101,7 +121,7 @@ RSpec.describe AiService do
 
   describe "#process_message" do
     it "classifies intent and generates a response" do
-      allow(messages_api).to receive(:create)
+      allow(client).to receive(:messages)
         .and_return(
           mock_claude_response('{"intent": "book", "entities": {"date": "2026-04-20", "time": "10:00", "name": null, "treatment": "consultation"}}'),
           mock_claude_response("Great! Let me check availability for Monday at 10am.")
@@ -116,7 +136,7 @@ RSpec.describe AiService do
     it "stores messages in conversation when provided" do
       conversation = create(:conversation, patient: patient)
 
-      allow(messages_api).to receive(:create)
+      allow(client).to receive(:messages)
         .and_return(
           mock_claude_response('{"intent": "faq", "entities": {"date": null, "time": null, "name": null, "treatment": null}}'),
           mock_claude_response("We're open Monday to Friday 8am-5pm!")

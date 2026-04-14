@@ -2,10 +2,7 @@ class WhatsappService
   class Error < StandardError; end
 
   def initialize
-    @ai = AiService.new
-    @templates = WhatsappTemplateService.new
-  rescue StandardError
-    # Template service may fail if Twilio creds aren't set (dev/test)
+    @ai = nil
     @templates = nil
   end
 
@@ -15,8 +12,16 @@ class WhatsappService
     patient = find_or_create_patient(from)
     conversation = find_or_create_conversation(patient)
 
+    fast_path_result = build_local_result(message: message, conversation: conversation)
+
+    if fast_path_result
+      persist_exchange(conversation, message, fast_path_result[:response])
+      handle_intent(fast_path_result, patient, conversation)
+      return fast_path_result
+    end
+
     # Process through AI brain
-    result = @ai.process_message(
+    result = ai_service.process_message(
       message: message,
       conversation: conversation,
       patient: patient
@@ -26,6 +31,14 @@ class WhatsappService
     handle_intent(result, patient, conversation)
 
     result
+  rescue AiService::Error => e
+    Rails.logger.warn("[WhatsApp] AI unavailable, using fallback response: #{e.message}")
+
+    fallback_result = build_fallback_result(message: message, conversation: conversation)
+
+    persist_exchange(conversation, message, fallback_result[:response]) if conversation
+
+    fallback_result
   end
 
   private
@@ -199,25 +212,25 @@ class WhatsappService
   # --- Template Sending (best-effort) ---
 
   def send_confirmation_template(patient, appointment)
-    @templates&.send_confirmation(patient, appointment)
+    template_service&.send_confirmation(patient, appointment)
   rescue WhatsappTemplateService::Error => e
     Rails.logger.warn("[WhatsApp] Template send failed: #{e.message}")
   end
 
   def send_reschedule_template(patient, appointment)
-    @templates&.send_reschedule(patient, appointment)
+    template_service&.send_reschedule(patient, appointment)
   rescue WhatsappTemplateService::Error => e
     Rails.logger.warn("[WhatsApp] Template send failed: #{e.message}")
   end
 
   def send_cancellation_template(patient, appointment)
-    @templates&.send_cancellation(patient, appointment)
+    template_service&.send_cancellation(patient, appointment)
   rescue WhatsappTemplateService::Error => e
     Rails.logger.warn("[WhatsApp] Template send failed: #{e.message}")
   end
 
   def send_flagged_alert(patient, reason)
-    @templates&.send_flagged_alert(patient, reason)
+    template_service&.send_flagged_alert(patient, reason)
   rescue WhatsappTemplateService::Error => e
     Rails.logger.warn("[WhatsApp] Flagged alert send failed: #{e.message}")
   end
@@ -241,6 +254,143 @@ class WhatsappService
       "transport"
     else
       "other"
+    end
+  end
+
+  def build_fallback_result(message:, conversation:)
+    # First try urgent (always immediate)
+    result = build_local_result(message: message, conversation: conversation)
+    return result if result
+
+    # When AI is unavailable, handle FAQ/pricing locally
+    msg_lower = message.downcase
+
+    if msg_lower.match?(/\b(hours?|open|closed|time|schedule)\b/)
+      return {
+        response: AiService::FAQ["hours"],
+        intent: "faq",
+        entities: {}
+      }
+    end
+
+    if msg_lower.match?(/\b(price|cost|how much|consultation|cleaning)\b/)
+      return {
+        response: "Consultation: #{AiService::PRICING['consultation']} | Cleaning: #{AiService::PRICING['cleaning']}",
+        intent: "faq",
+        entities: {}
+      }
+    end
+
+    {
+      response: "I'm sorry, our system is a bit busy right now. Please send your preferred day and time, and our team will follow up as soon as possible.",
+      intent: "book",
+      entities: {}
+    }
+  end
+
+  def build_local_result(message:, conversation:)
+    # Only use fast path for urgent/emergency (always immediate)
+    # Don't use for book/reschedule/cancel (need multi-turn with AI)
+    if message.downcase.match?(/\b(pain|urgent|emergency|swollen|bleeding)\b/)
+      return {
+        response: "I'm sorry you're dealing with that. If this is urgent, please call the practice directly now so we can assist you as quickly as possible.",
+        intent: "urgent",
+        entities: {}
+      }
+    end
+
+    # For other intents, let Claude handle multi-turn conversation
+    nil
+  end
+
+  def build_local_result_disabled(message:, conversation:)
+    # DISABLED: These patterns were causing conversation loops
+    # Now delegating to AI service for proper multi-turn handling
+
+    if message.downcase.match?(/\b(book|appointment|schedule)\b/)
+      return {
+        response: "I'd be happy to help you book an appointment. Please send your preferred day and time, and our team will follow up as soon as possible.",
+        intent: "book",
+        entities: {}
+      }
+    end
+
+    if message.downcase.match?(/\b(reschedule|move|change)\b/)
+      return {
+        response: "I can help with a reschedule. Please send your current appointment day and the new day and time you'd prefer, and our team will follow up shortly.",
+        intent: "reschedule",
+        entities: {}
+      }
+    end
+
+    if message.downcase.match?(/\b(cancel|cancellation)\b/)
+      return {
+        response: "I can help with that. If you'd like, send the appointment day and whether you'd prefer to cancel or reschedule, and our team will follow up shortly.",
+        intent: "cancel",
+        entities: {}
+      }
+    end
+
+    if combined_text.match?(/\b(hour|hours|open|closing|close|time)\b/)
+      return {
+        response: AiService::FAQ["hours"],
+        intent: "faq",
+        entities: {}
+      }
+    end
+
+    if combined_text.match?(/\b(where|location|address|directions|pretoria)\b/)
+      return {
+        response: AiService::FAQ["location"],
+        intent: "faq",
+        entities: {}
+      }
+    end
+
+    if combined_text.match?(/\b(payment|medical aid|medicalaid|card|cash)\b/)
+      return {
+        response: AiService::FAQ["payment"],
+        intent: "faq",
+        entities: {}
+      }
+    end
+
+    if combined_text.match?(/\b(service|services|treatment|treatments)\b/)
+      return {
+        response: AiService::FAQ["services"],
+        intent: "faq",
+        entities: {}
+      }
+    end
+
+    if combined_text.match?(/\b(price|pricing|cost|quote|consultation|cleaning)\b/)
+      return {
+        response: "A consultation is #{AiService::PRICING['consultation']}. A cleaning is #{AiService::PRICING['cleaning']}. For other treatments, the doctor would first need to assess you at a consultation.",
+        intent: "faq",
+        entities: {}
+      }
+    end
+
+    nil
+  end
+
+  def persist_exchange(conversation, user_message, assistant_message)
+    conversation.add_messages([
+      { role: "user", content: user_message },
+      { role: "assistant", content: assistant_message }
+    ])
+  end
+
+  def ai_service
+    @ai ||= AiService.new
+  end
+
+  def template_service
+    @templates ||= begin
+      WhatsappTemplateService.new
+    rescue StandardError
+      # Template service may fail if Twilio creds aren't set (dev/test)
+      nil
     end
   end
 end
