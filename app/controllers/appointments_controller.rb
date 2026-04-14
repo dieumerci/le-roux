@@ -1,8 +1,6 @@
 class AppointmentsController < ApplicationController
-  # Number of days of appointments to pre-load for the interactive calendar
-  # view. Covers ~2 weeks so FullCalendar navigation feels instant without
-  # triggering a refetch.
-  CALENDAR_WINDOW_DAYS = 14
+  CALENDAR_VIEWS = %w[timeGridWeek timeGridDay dayGridMonth].freeze
+  DEFAULT_CALENDAR_VIEW = "timeGridWeek"
 
   # Maximum rows the client-side DataTable will paginate through.
   # For a single dental practice this is effectively "all appointments
@@ -10,42 +8,68 @@ class AppointmentsController < ApplicationController
   LIST_ROW_LIMIT = 500
 
   def index
-    appointments = Appointment.includes(:patient).order(start_time: :desc).limit(LIST_ROW_LIMIT)
+    range_start, range_end = calendar_range
+    calendar_view = requested_calendar_view
+    calendar_date = calendar_anchor_date(range_start)
 
-    today = Date.current
-    calendar_appointments = Appointment
-      .includes(:patient)
-      .where(start_time: (today - 3.days).beginning_of_day..(today + CALENDAR_WINDOW_DAYS.days).end_of_day)
-      .order(:start_time)
+    page_data = dev_page_cache(
+      "appointments",
+      "index",
+      range_start.to_date.iso8601,
+      range_end.to_date.iso8601,
+      calendar_view,
+      calendar_date.iso8601
+    ) do
+      appointments = Appointment.includes(:patient).order(start_time: :desc).limit(LIST_ROW_LIMIT).to_a
+      calendar_appointments = Appointment
+        .includes(:patient)
+        .where(start_time: range_start...range_end)
+        .order(:start_time)
+        .to_a
 
-    stats_scope = Appointment.all
+      patients = Patient.order(:first_name, :last_name).limit(500).select(:id, :first_name, :last_name, :phone).to_a
+      status_counts = Appointment.group(:status).count
+      total_count = status_counts.values.sum
 
-    render inertia: "Appointments", props: {
-      appointments: appointments.map { |a| appointment_props(a) },
-      calendar_appointments: calendar_appointments.map { |a| appointment_props(a) },
-      # Lightweight patient list for the Create modal picker. Phase 9.6
-      # sub-area #5 will replace this with a proper SearchController,
-      # but for now 500 patients loaded inline is fine for a single-
-      # clinic practice and keeps the modal self-contained.
-      patients: Patient.order(:first_name, :last_name).limit(500).map { |p|
-        { id: p.id, name: p.full_name, phone: p.phone }
-      },
-      stats: {
-        total: stats_scope.count,
-        scheduled: stats_scope.where(status: :scheduled).count,
-        confirmed: stats_scope.where(status: :confirmed).count,
-        cancelled: stats_scope.where(status: :cancelled).count,
-        completed: stats_scope.where(status: :completed).count
+      {
+        appointments: appointments.map { |a| appointment_props(a) },
+        calendar_appointments: calendar_appointments.map { |a| appointment_props(a) },
+        # Lightweight patient list for the Create modal picker. Phase 9.6
+        # sub-area #5 will replace this with a proper SearchController,
+        # but for now 500 patients loaded inline is fine for a single-
+        # clinic practice and keeps the modal self-contained.
+        patients: patients.map { |p|
+          { id: p.id, name: p.full_name, phone: p.phone }
+        },
+        calendar_meta: {
+          initial_date: calendar_date.iso8601,
+          range_start: range_start.iso8601,
+          range_end: range_end.iso8601,
+          view: calendar_view
+        },
+        stats: {
+          total: total_count,
+          scheduled: status_counts.fetch("scheduled", 0),
+          confirmed: status_counts.fetch("confirmed", 0),
+          cancelled: status_counts.fetch("cancelled", 0),
+          completed: status_counts.fetch("completed", 0)
+        }
       }
-    }
+    end
+
+    render inertia: "Appointments", props: page_data
   end
 
   def show
-    appointment = Appointment.includes(:patient, :cancellation_reason, :confirmation_logs).find(params[:id])
+    page_data = dev_page_cache("appointments", "show", params[:id]) do
+      appointment = Appointment.includes(:patient, :cancellation_reason, :confirmation_logs).find(params[:id])
 
-    render inertia: "AppointmentShow", props: {
-      appointment: detailed_appointment_props(appointment)
-    }
+      {
+        appointment: detailed_appointment_props(appointment)
+      }
+    end
+
+    render inertia: "AppointmentShow", props: page_data
   end
 
   # POST /appointments
@@ -57,14 +81,17 @@ class AppointmentsController < ApplicationController
   # Appointment row — useful for dev and for practices that aren't using
   # the Google integration yet.
   def create
-    patient = Patient.find(create_params[:patient_id])
     start_at = parse_time(create_params[:start_time])
     end_at   = parse_time(create_params[:end_time])
 
     if start_at.nil? || end_at.nil?
-      return redirect_back fallback_location: appointments_path,
-        alert: "Invalid start or end time", status: :see_other
+      return redirect_back fallback_location: appointments_location,
+        alert: "Invalid start or end time",
+        inertia: { errors: { start_time: "Invalid start or end time" } },
+        status: :see_other
     end
+
+    patient = Patient.find(create_params[:patient_id])
 
     appointment =
       if ENV["GOOGLE_CALENDAR_ID"].present?
@@ -85,15 +112,25 @@ class AppointmentsController < ApplicationController
       end
 
     NotificationService.appointment_created(appointment) if appointment.is_a?(Appointment)
+    expire_appointment_caches!
 
-    redirect_back fallback_location: appointments_path,
+    redirect_to appointments_location(appointment.start_time.to_date.iso8601),
       notice: "Appointment booked", status: :see_other
+  rescue ActiveRecord::RecordNotFound
+    redirect_back fallback_location: appointments_location,
+      alert: "Selected patient could not be found",
+      inertia: { errors: { patient_id: "Selected patient could not be found" } },
+      status: :see_other
   rescue ActiveRecord::RecordInvalid => e
-    redirect_back fallback_location: appointments_path,
-      alert: e.record.errors.full_messages.to_sentence, status: :see_other
+    redirect_back fallback_location: appointments_location(anchor_date_for(start_at)),
+      alert: e.record.errors.full_messages.to_sentence,
+      inertia: { errors: inertia_errors_for(e.record) },
+      status: :see_other
   rescue GoogleCalendarService::Error => e
-    redirect_back fallback_location: appointments_path,
-      alert: e.message, status: :see_other
+    redirect_back fallback_location: appointments_location(anchor_date_for(start_at)),
+      alert: e.message,
+      inertia: { errors: { base: e.message } },
+      status: :see_other
   end
 
   # PATCH /appointments/:id
@@ -107,6 +144,8 @@ class AppointmentsController < ApplicationController
   # the local change and log the error so the dashboard reflects it.
   def update
     appointment = Appointment.find(params[:id])
+    new_start = nil
+    new_end = nil
 
     attrs = {}
     if update_params[:start_time].present? || update_params[:end_time].present?
@@ -114,8 +153,10 @@ class AppointmentsController < ApplicationController
       new_end   = parse_time(update_params[:end_time])
 
       if new_start.nil? || new_end.nil?
-        return redirect_back fallback_location: appointments_path,
-          alert: "Invalid start or end time", status: :see_other
+        return redirect_back fallback_location: appointments_location(anchor_date_for(appointment.start_time)),
+          alert: "Invalid start or end time",
+          inertia: { errors: { start_time: "Invalid start or end time" } },
+          status: :see_other
       end
       attrs[:start_time] = new_start
       attrs[:end_time]   = new_end
@@ -130,12 +171,15 @@ class AppointmentsController < ApplicationController
     sync_google_calendar(appointment) if attrs[:start_time].present?
 
     NotificationService.appointment_rescheduled(appointment) if attrs[:start_time].present?
+    expire_appointment_caches!
 
-    redirect_back fallback_location: appointments_path,
+    redirect_to appointments_location(appointment.start_time.to_date.iso8601),
       notice: "Appointment updated", status: :see_other
   rescue ActiveRecord::RecordInvalid => e
-    redirect_back fallback_location: appointments_path,
-      alert: e.record.errors.full_messages.to_sentence, status: :see_other
+    redirect_back fallback_location: appointments_location(anchor_date_for(new_start || appointment.start_time)),
+      alert: e.record.errors.full_messages.to_sentence,
+      inertia: { errors: inertia_errors_for(e.record) },
+      status: :see_other
   end
 
   # PATCH /appointments/:id/cancel
@@ -170,6 +214,7 @@ class AppointmentsController < ApplicationController
     end
 
     NotificationService.appointment_cancelled(appointment, reason: cancel_params[:category])
+    expire_appointment_caches!
 
     redirect_back fallback_location: appointments_path,
       notice: "Appointment cancelled", status: :see_other
@@ -187,6 +232,7 @@ class AppointmentsController < ApplicationController
     appointment = Appointment.find(params[:id])
     appointment.confirmed!
     NotificationService.appointment_confirmed(appointment)
+    expire_appointment_caches!
     redirect_back fallback_location: appointments_path,
       notice: "Appointment confirmed", status: :see_other
   end
@@ -207,8 +253,14 @@ class AppointmentsController < ApplicationController
 
   def parse_time(value)
     return nil if value.blank?
-    Time.zone.parse(value.to_s)
-  rescue ArgumentError
+    string = value.to_s
+
+    if string.match?(/[zZ]\z|[+-]\d{2}:\d{2}\z/)
+      Time.iso8601(string).in_time_zone(Time.zone)
+    else
+      Time.zone.parse(string)
+    end
+  rescue ArgumentError, TypeError
     nil
   end
 
@@ -227,12 +279,14 @@ class AppointmentsController < ApplicationController
   def appointment_props(appointment)
     {
       id: appointment.id,
+      patient_id: appointment.patient_id,
       patient_name: appointment.patient.full_name,
       patient_phone: appointment.patient.phone,
       start_time: appointment.start_time.iso8601,
       end_time: appointment.end_time.iso8601,
       status: appointment.status,
-      reason: appointment.reason
+      reason: appointment.reason,
+      notes: appointment.notes
     }
   end
 
@@ -248,5 +302,73 @@ class AppointmentsController < ApplicationController
         { method: cl.method, outcome: cl.outcome, attempts: cl.attempts, flagged: cl.flagged, created_at: cl.created_at.iso8601 }
       }
     )
+  end
+
+  def expire_appointment_caches!
+    expire_dev_page_cache("appointments/index")
+    expire_dev_page_cache("appointments/show")
+    expire_dev_page_cache("dashboard")
+    expire_dev_page_cache("reminders/index")
+    Rails.cache.delete("patients/index/stats")
+  end
+
+  def requested_calendar_view
+    view = params[:calendar_view].to_s
+    CALENDAR_VIEWS.include?(view) ? view : DEFAULT_CALENDAR_VIEW
+  end
+
+  def calendar_anchor_date(default_time = nil)
+    if params[:calendar_date].present?
+      Date.iso8601(params[:calendar_date])
+    elsif default_time.present?
+      default_time.to_date
+    else
+      Date.current
+    end
+  rescue ArgumentError
+    default_time.present? ? default_time.to_date : Date.current
+  end
+
+  def calendar_range
+    requested_start = parse_time(params[:calendar_start])
+    requested_end = parse_time(params[:calendar_end])
+
+    if requested_start.present? && requested_end.present? && requested_end > requested_start
+      return [requested_start, requested_end]
+    end
+
+    anchor = calendar_anchor_date
+
+    case requested_calendar_view
+    when "timeGridDay"
+      [
+        anchor.in_time_zone.beginning_of_day,
+        anchor.next_day.in_time_zone.beginning_of_day
+      ]
+    when "dayGridMonth"
+      [
+        anchor.beginning_of_month.beginning_of_week.in_time_zone.beginning_of_day,
+        anchor.end_of_month.end_of_week.next_day.in_time_zone.beginning_of_day
+      ]
+    else
+      [
+        anchor.beginning_of_week.in_time_zone.beginning_of_day,
+        anchor.end_of_week.next_day.in_time_zone.beginning_of_day
+      ]
+    end
+  end
+
+  def appointments_location(calendar_date = nil)
+    return appointments_path if calendar_date.blank?
+
+    appointments_path(calendar_date: calendar_date)
+  end
+
+  def anchor_date_for(time)
+    time&.to_date&.iso8601
+  end
+
+  def inertia_errors_for(record)
+    record.errors.to_hash(true).transform_values { |messages| Array(messages).first }
   end
 end

@@ -32,6 +32,7 @@ const STATUS_OPTIONS = [
 export default function Appointments({
   appointments = [],
   calendar_appointments = [],
+  calendar_meta = {},
   patients = [],
   stats,
 }) {
@@ -202,6 +203,7 @@ export default function Appointments({
       {view === 'schedule' ? (
         <AppointmentCalendar
           appointments={calendar_appointments}
+          calendarMeta={calendar_meta}
           onEventClick={handleEventClick}
         />
       ) : (

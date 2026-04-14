@@ -1,6 +1,36 @@
 require 'rails_helper'
+require 'inertia_rails/rspec'
 
 RSpec.describe 'Appointments', type: :request do
+  describe 'GET /appointments' do
+    it 'scopes calendar appointments to the requested visible range' do
+      in_range = create(:appointment,
+        start_time: Time.zone.local(2026, 5, 12, 9, 0),
+        end_time: Time.zone.local(2026, 5, 12, 9, 30)
+      )
+      out_of_range = create(:appointment,
+        start_time: Time.zone.local(2026, 6, 2, 9, 0),
+        end_time: Time.zone.local(2026, 6, 2, 9, 30)
+      )
+
+      get appointments_path, params: {
+        calendar_start: '2026-05-11T00:00:00+02:00',
+        calendar_end: '2026-05-18T00:00:00+02:00',
+        calendar_date: '2026-05-12',
+        calendar_view: 'timeGridWeek'
+      }
+
+      expect(response).to have_http_status(:ok)
+      ids = inertia.props[:calendar_appointments].map { |appointment| appointment[:id] }
+      expect(ids).to include(in_range.id)
+      expect(ids).not_to include(out_of_range.id)
+      expect(inertia.props[:calendar_meta]).to include(
+        initial_date: '2026-05-12',
+        view: 'timeGridWeek'
+      )
+    end
+  end
+
   describe 'PATCH /appointments/:id' do
     let!(:appointment) { create(:appointment) }
     let(:new_start) { 3.days.from_now.change(hour: 14, min: 0) }
@@ -15,6 +45,7 @@ RSpec.describe 'Appointments', type: :request do
       }
 
       expect(response).to have_http_status(:see_other)
+      expect(response.headers['Location']).to include("calendar_date=#{new_start.to_date.iso8601}")
       appointment.reload
       expect(appointment.start_time).to be_within(1.second).of(new_start)
       expect(appointment.end_time).to be_within(1.second).of(new_end)
@@ -34,24 +65,28 @@ RSpec.describe 'Appointments', type: :request do
     end
 
     it 'rejects invalid times' do
-      patch appointment_path(appointment), params: {
-        appointment: { start_time: 'not-a-date', end_time: '' }
-      }
+      patch appointment_path(appointment),
+        params: {
+          appointment: { start_time: 'not-a-date', end_time: '' }
+        },
+        headers: { 'X-Inertia' => 'true', 'X-Requested-With' => 'XMLHttpRequest' }
 
       expect(response).to have_http_status(:see_other)
-      expect(flash[:alert]).to be_present
+      expect(session[:inertia_errors]).to include(start_time: 'Invalid start or end time')
     end
 
     it 'rejects end_time <= start_time' do
-      patch appointment_path(appointment), params: {
-        appointment: {
-          start_time: new_start.iso8601,
-          end_time: new_start.iso8601
-        }
-      }
+      patch appointment_path(appointment),
+        params: {
+          appointment: {
+            start_time: new_start.iso8601,
+            end_time: new_start.iso8601
+          }
+        },
+        headers: { 'X-Inertia' => 'true', 'X-Requested-With' => 'XMLHttpRequest' }
 
       expect(response).to have_http_status(:see_other)
-      expect(flash[:alert]).to be_present
+      expect(session[:inertia_errors]).to include(end_time: 'End time must be after start time')
     end
 
     context 'when the appointment is linked to a Google Calendar event' do
@@ -120,10 +155,29 @@ RSpec.describe 'Appointments', type: :request do
       }.to change(Appointment, :count).by(1)
 
       expect(response).to have_http_status(:see_other)
+      expect(response.headers['Location']).to include("calendar_date=#{start_at.to_date.iso8601}")
       appointment = Appointment.last
       expect(appointment.patient).to eq(patient)
       expect(appointment.reason).to eq('Cleaning')
       expect(appointment.status).to eq('scheduled')
+    end
+
+    it 'parses browser UTC ISO timestamps back into the clinic timezone' do
+      start_payload = '2026-05-14T07:00:00.000Z'
+      end_payload = '2026-05-14T07:30:00.000Z'
+
+      post appointments_path, params: {
+        appointment: {
+          patient_id: patient.id,
+          start_time: start_payload,
+          end_time: end_payload,
+          reason: 'Consultation'
+        }
+      }
+
+      appointment = Appointment.last
+      expect(appointment.start_time.in_time_zone.strftime('%Y-%m-%d %H:%M')).to eq('2026-05-14 09:00')
+      expect(appointment.end_time.in_time_zone.strftime('%Y-%m-%d %H:%M')).to eq('2026-05-14 09:30')
     end
 
     it 'rejects invalid times without creating anything' do
@@ -134,11 +188,11 @@ RSpec.describe 'Appointments', type: :request do
             start_time: '',
             end_time: ''
           }
-        }
+        }, headers: { 'X-Inertia' => 'true', 'X-Requested-With' => 'XMLHttpRequest' }
       }.not_to change(Appointment, :count)
 
       expect(response).to have_http_status(:see_other)
-      expect(flash[:alert]).to be_present
+      expect(session[:inertia_errors]).to include(start_time: 'Invalid start or end time')
     end
   end
 

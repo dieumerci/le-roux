@@ -299,7 +299,7 @@ Do a full audit before changing behavior. This phase exists to make the remainin
 - [x] Audit the current application surface area: routes, controllers, models, services, Inertia pages, shared layouts, key dashboard components, and existing specs
 - [x] Review the provided dashboard/calendar screenshots and record them as the visual reference for this track
 - [x] Capture baseline reproduction steps for the broken patient creation flow
-- [ ] Capture baseline reproduction steps for the appointment/calendar visibility issue
+- [x] Capture baseline reproduction steps for the appointment/calendar visibility issue
 - [x] Record current N+1 hotspots, slow pages, and any known performance constraints before changing query behavior
 - [x] Summarize the smallest safe implementation plan for the next phases before touching production-facing flows
 - [ ] Create a conventional commit for the audit baseline before moving into bug-fix work
@@ -322,15 +322,15 @@ Fix the patient creation flow at the root-cause level so new patient data is rel
 
 Fix appointment creation so newly created records always appear in the calendar and the appointment lifecycle is consistent from form submission to visual rendering.
 
-- [ ] Trace the full appointment flow end to end: `AppointmentFormModal` → request payload → `AppointmentsController#create` → database/Google booking logic → Inertia props → `AppointmentCalendar`
-- [ ] Reproduce the current issue and confirm whether the failure is caused by persistence, page reload state, query scope, event mapping, or timezone handling
-- [ ] Verify that appointments are stored with the correct timestamps and timezone assumptions
-- [ ] Verify that the calendar queries the correct records and that newly created appointments are included in the returned dataset
-- [ ] Verify that event mapping in `AppointmentCalendar` matches the data shape returned by Rails
-- [ ] Fix the root cause so new appointments always appear in both the list view and the calendar view
-- [ ] Add or update tests for appointment creation, calendar payload integrity, and timezone-safe rendering assumptions
-- [ ] Re-test create, edit/reschedule, and cancel flows to confirm the calendar stays accurate
-- [ ] Create a conventional commit before moving to calendar polish
+- [x] Trace the full appointment flow end to end: `AppointmentFormModal` → request payload → `AppointmentsController#create` → database/Google booking logic → Inertia props → `AppointmentCalendar`
+- [x] Reproduce the current issue and confirm whether the failure is caused by persistence, page reload state, query scope, event mapping, or timezone handling
+- [x] Verify that appointments are stored with the correct timestamps and timezone assumptions
+- [x] Verify that the calendar queries the correct records and that newly created appointments are included in the returned dataset
+- [x] Verify that event mapping in `AppointmentCalendar` matches the data shape returned by Rails
+- [x] Fix the root cause so new appointments always appear in both the list view and the calendar view
+- [x] Add or update tests for appointment creation, calendar payload integrity, and timezone-safe rendering assumptions
+- [x] Re-test create, edit/reschedule, and cancel flows to confirm the calendar stays accurate
+- [x] Create a conventional commit before moving to calendar polish
 
 ## Phase 9.10: Calendar UI Restyle & Booking Presentation
 

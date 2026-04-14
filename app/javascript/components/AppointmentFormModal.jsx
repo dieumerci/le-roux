@@ -95,8 +95,10 @@ export default function AppointmentFormModal({
 
     const opts = {
       preserveScroll: true,
-      onSuccess: () => {
-        toast.success(isEdit ? 'Appointment updated' : 'Appointment booked')
+      preserveState: true,
+      onSuccess: (page) => {
+        const notice = page?.props?.flash?.notice
+        toast.success(notice || (isEdit ? 'Appointment updated' : 'Appointment booked'))
         onClose?.()
       },
       onError: (errs) => {

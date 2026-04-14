@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { router } from '@inertiajs/react'
 import { Search } from 'lucide-react'
 import FullCalendar from '@fullcalendar/react'
@@ -6,6 +6,8 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { toast } from 'sonner'
+
+const DEFAULT_CALENDAR_VIEW = 'timeGridWeek'
 
 // ── Status → pastel card theme ──────────────────────────────────────
 // Each event block is rendered as a white-ish card with a subtle tint,
@@ -38,9 +40,32 @@ const formatRange = (start, end) => {
   return `${fmt(start)} - ${fmt(end)}`
 }
 
-export default function AppointmentCalendar({ appointments = [], onEventClick }) {
+const toMillis = (value) => {
+  if (!value) return null
+  const stamp = Date.parse(value)
+  return Number.isNaN(stamp) ? null : stamp
+}
+
+export default function AppointmentCalendar({
+  appointments = [],
+  onEventClick,
+  calendarMeta = {},
+}) {
   const calendarRef = useRef(null)
+  const loadedRangeRef = useRef({
+    startMs: toMillis(calendarMeta.range_start),
+    endMs: toMillis(calendarMeta.range_end),
+    view: calendarMeta.view || DEFAULT_CALENDAR_VIEW,
+  })
   const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    loadedRangeRef.current = {
+      startMs: toMillis(calendarMeta.range_start),
+      endMs: toMillis(calendarMeta.range_end),
+      view: calendarMeta.view || DEFAULT_CALENDAR_VIEW,
+    }
+  }, [calendarMeta.range_start, calendarMeta.range_end, calendarMeta.view])
 
   // Filter appointments client-side by search text. Looks at patient
   // name, phone, reason, and status so a single input covers every
@@ -117,6 +142,39 @@ export default function AppointmentCalendar({ appointments = [], onEventClick })
     }
   }
 
+  const handleDatesSet = (info) => {
+    const anchorDate = info.view.currentStart
+      ? info.view.currentStart.toISOString().slice(0, 10)
+      : info.start.toISOString().slice(0, 10)
+    const nextRange = {
+      startMs: info.start.getTime(),
+      endMs: info.end.getTime(),
+      view: info.view.type,
+    }
+
+    if (
+      loadedRangeRef.current.startMs === nextRange.startMs &&
+      loadedRangeRef.current.endMs === nextRange.endMs &&
+      loadedRangeRef.current.view === nextRange.view
+    ) {
+      return
+    }
+
+    loadedRangeRef.current = nextRange
+
+    router.get('/appointments', {
+      calendar_start: info.start.toISOString(),
+      calendar_end: info.end.toISOString(),
+      calendar_date: anchorDate,
+      calendar_view: info.view.type,
+    }, {
+      only: ['calendar_appointments', 'calendar_meta'],
+      preserveState: true,
+      preserveScroll: true,
+      replace: true,
+    })
+  }
+
   // Custom card renderer — this is what gives us the screenshot look.
   // FullCalendar still positions the outer wrapper on the time grid;
   // we render the card inside with inline styles that pull from the
@@ -188,7 +246,8 @@ export default function AppointmentCalendar({ appointments = [], onEventClick })
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        initialView="timeGridWeek"
+        initialView={calendarMeta.view || DEFAULT_CALENDAR_VIEW}
+        initialDate={calendarMeta.initial_date}
         headerToolbar={{
           left: 'prev,next today',
           center: 'title',
@@ -198,6 +257,7 @@ export default function AppointmentCalendar({ appointments = [], onEventClick })
         editable
         eventDrop={handleEventDrop}
         eventClick={handleEventClick}
+        datesSet={handleDatesSet}
         eventContent={renderEventContent}
         slotMinTime="08:00:00"
         slotMaxTime="18:00:00"
