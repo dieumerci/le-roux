@@ -336,13 +336,13 @@ Fix appointment creation so newly created records always appear in the calendar 
 
 Refine the calendar so it matches the clean, premium booking/dashboard feel from the provided screenshot without copying it literally.
 
-- [ ] Audit the current calendar toolbar, spacing, surfaces, event cards, and empty states against the screenshot benchmark
-- [ ] Restyle the calendar shell so it feels like part of a polished clinic dashboard rather than a plain technical widget
-- [ ] Improve appointment card/event presentation for scanability: name, time, treatment/reason, spacing, and status hierarchy
-- [ ] Improve the calendar toolbar, controls, and surrounding card layout to match the screenshot’s clean SaaS composition
-- [ ] Keep the calendar visually aligned with the rest of the dashboard theme and card system
-- [ ] Verify the calendar remains readable and functional on desktop and smaller screen widths
-- [ ] Create a conventional commit before moving to performance work
+- [x] Audit the current calendar toolbar, spacing, surfaces, event cards, and empty states against the screenshot benchmark
+- [x] Restyle the calendar shell so it feels like part of a polished clinic dashboard rather than a plain technical widget
+- [x] Improve appointment card/event presentation for scanability: name, time, treatment/reason, spacing, and status hierarchy
+- [x] Improve the calendar toolbar, controls, and surrounding card layout to match the screenshot’s clean SaaS composition
+- [x] Keep the calendar visually aligned with the rest of the dashboard theme and card system
+- [x] Verify the calendar remains readable and functional on desktop and smaller screen widths
+- [x] Create a conventional commit before moving to performance work
 
 ## Phase 9.11: N+1 Query Audit & Performance Hardening
 

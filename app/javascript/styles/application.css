@@ -10,71 +10,109 @@
  * grid lines, card-style events (see AppointmentCalendar.jsx).
  */
 .appointment-calendar .fc {
-  --fc-border-color: #F3F4F6;
-  --fc-today-bg-color: #FFFBF5;
-  --fc-now-indicator-color: #C59B65;
+  --fc-border-color: rgba(177, 197, 246, 0.58);
+  --fc-today-bg-color: rgba(214, 224, 248, 0.48);
+  --fc-now-indicator-color: #3164DE;
   --fc-page-bg-color: #FFFFFF;
   --fc-neutral-bg-color: #FFFFFF;
   --fc-button-bg-color: #FFFFFF;
-  --fc-button-border-color: #E5E7EB;
-  --fc-button-text-color: #6B7280;
-  --fc-button-hover-bg-color: #F9FAFB;
-  --fc-button-hover-border-color: #D1D5DB;
-  --fc-button-active-bg-color: #F3F4F6;
-  --fc-button-active-border-color: #D1D5DB;
+  --fc-button-border-color: rgba(177, 197, 246, 0.95);
+  --fc-button-text-color: #5E6B86;
+  --fc-button-hover-bg-color: #F8FAFF;
+  --fc-button-hover-border-color: #769BF5;
+  --fc-button-active-bg-color: #3164DE;
+  --fc-button-active-border-color: #3164DE;
   font-family: inherit;
 }
 
+.appointment-calendar .fc .fc-toolbar {
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.appointment-calendar .fc .fc-toolbar-chunk {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .appointment-calendar .fc .fc-toolbar-title {
-  font-size: 1rem;
+  font-size: 1.625rem;
   font-weight: 600;
-  color: #4A2C1A; /* brand-brown */
+  letter-spacing: -0.03em;
+  color: #393C4D;
 }
 
 .appointment-calendar .fc .fc-button {
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: 0.8rem;
+  font-weight: 600;
   text-transform: capitalize;
   box-shadow: none;
-  border-radius: 0.5rem;
-  padding: 0.375rem 0.75rem;
+  border-radius: 999px;
+  padding: 0.55rem 0.95rem;
+  transition: all 160ms ease;
+}
+
+.appointment-calendar .fc .fc-button:focus {
+  box-shadow: 0 0 0 4px rgba(177, 197, 246, 0.42);
 }
 
 .appointment-calendar .fc .fc-button-primary:not(:disabled).fc-button-active {
-  color: #4A2C1A;
-  background-color: #FDF6EC;
-  border-color: #E8D4A8;
+  color: #FFFFFF;
+  background-color: #3164DE;
+  border-color: #3164DE;
+}
+
+.appointment-calendar .fc .fc-button-primary:not(:disabled):hover {
+  color: #393C4D;
 }
 
 .appointment-calendar .fc .fc-col-header-cell {
-  padding: 0.75rem 0;
-  background-color: #FFFFFF;
-  border-bottom: 1px solid #F3F4F6;
+  padding: 1rem 0;
+  background: #F8FAFF;
+  border-bottom: 1px solid rgba(177, 197, 246, 0.58);
 }
 
 .appointment-calendar .fc .fc-col-header-cell-cushion {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  color: #9CA3AF;
+  color: #8592AD;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 0.25rem 0.5rem;
+  letter-spacing: 0.12em;
+  padding: 0.25rem 0.65rem;
 }
 
 .appointment-calendar .fc .fc-timegrid-slot-label-cushion {
-  font-size: 0.65rem;
-  color: #9CA3AF;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #8592AD;
+}
+
+.appointment-calendar .fc .fc-scrollgrid {
+  border-radius: 1.5rem;
+  overflow: hidden;
+  border-color: rgba(177, 197, 246, 0.7);
+}
+
+.appointment-calendar .fc .fc-timegrid-divider {
+  background: #F8FAFF;
 }
 
 /* Leave slot height up to FullCalendar's contentHeight prop —
  * we set it in JS so it scales consistently across week/day/month. */
 
-/* Let our custom eventContent fill the block completely; strip the
- * default FullCalendar padding, border, and dot/time rendering. */
 .appointment-calendar .fc .fc-timegrid-event {
   padding: 0;
   border: none;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
+  background: transparent !important;
+}
+
+.appointment-calendar .fc .fc-daygrid-event {
+  padding: 0;
+  border: none;
   background: transparent !important;
 }
 
@@ -82,10 +120,35 @@
   padding: 0;
 }
 
+.appointment-calendar .fc .fc-daygrid-event .fc-event-main {
+  padding: 0;
+}
+
 .appointment-calendar .fc .fc-timegrid-now-indicator-line {
   border-width: 2px 0 0 0;
+  opacity: 0.92;
 }
 
 .appointment-calendar .fc .fc-timegrid-now-indicator-arrow {
   border-width: 5px 0 5px 6px;
+}
+
+.appointment-calendar .fc .fc-timegrid-slot {
+  height: 3.6rem;
+}
+
+.appointment-calendar .fc .fc-theme-standard td,
+.appointment-calendar .fc .fc-theme-standard th {
+  border-color: rgba(177, 197, 246, 0.45);
+}
+
+@media (max-width: 1024px) {
+  .appointment-calendar .fc .fc-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .appointment-calendar .fc .fc-toolbar-title {
+    font-size: 1.35rem;
+  }
 }

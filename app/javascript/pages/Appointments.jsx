@@ -10,12 +10,12 @@ import CancelAppointmentModal from '../components/CancelAppointmentModal'
 import DataTable from '../components/DataTable'
 
 const STATUS_STYLES = {
-  scheduled:   'bg-amber-100 text-amber-800',
-  confirmed:   'bg-emerald-100 text-emerald-800',
-  completed:   'bg-blue-100 text-blue-800',
-  cancelled:   'bg-red-100 text-red-800',
-  no_show:     'bg-gray-100 text-gray-600',
-  rescheduled: 'bg-purple-100 text-purple-800',
+  scheduled:   'border border-[#3164DE]/10 bg-[#D6E0F8]/75 text-[#3164DE]',
+  confirmed:   'border border-[#19A14E]/10 bg-[#EAF8F0] text-[#15823F]',
+  completed:   'border border-[#769BF5]/10 bg-[#EEF4FF] text-[#4A71D2]',
+  cancelled:   'border border-[#EF6161]/10 bg-[#FFF1F1] text-[#C14A4A]',
+  no_show:     'border border-[#8592AD]/10 bg-[#F3F6FB] text-[#6D7991]',
+  rescheduled: 'border border-[#8A7BFF]/10 bg-[#F2EEFF] text-[#6C5FE4]',
 }
 
 // Single source of truth for statuses — reused in the table header
@@ -70,14 +70,14 @@ export default function Appointments({
       header: 'Patient',
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-brand-cream flex items-center justify-center flex-shrink-0">
-            <span className="text-brand-brown text-xs font-semibold">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#D6E0F8]">
+            <span className="text-xs font-semibold text-[#3164DE]">
               {initials(row.original.patient_name)}
             </span>
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-900">{row.original.patient_name}</p>
-            <p className="text-xs text-gray-400">{row.original.patient_phone}</p>
+            <p className="text-sm font-medium text-[#393C4D]">{row.original.patient_name}</p>
+            <p className="text-xs text-[#8592AD]">{row.original.patient_phone}</p>
           </div>
         </div>
       ),
@@ -96,7 +96,7 @@ export default function Appointments({
               weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
             })}
           </p>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="mt-0.5 text-xs text-[#8592AD]">
             {fmtTime(row.original.start_time)} — {fmtTime(row.original.end_time)}
           </p>
         </div>
@@ -146,7 +146,7 @@ export default function Appointments({
               title="Confirm"
               onClick={() => confirmAppointment(row.original)}
               icon={CheckCircle}
-              colorClass="text-emerald-600 hover:bg-emerald-50"
+              colorClass="text-[#15823F] hover:bg-[#EAF8F0]"
             />
           )}
           {row.original.status !== 'cancelled' && (
@@ -154,7 +154,7 @@ export default function Appointments({
               title="Cancel"
               onClick={() => openCancel(row.original)}
               icon={XIcon}
-              colorClass="text-red-600 hover:bg-red-50"
+              colorClass="text-[#C14A4A] hover:bg-[#FFF1F1]"
             />
           )}
         </div>
@@ -164,21 +164,26 @@ export default function Appointments({
 
   return (
     <DashboardLayout>
-      <div className="mb-8 flex items-start justify-between">
+      <div className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-brand-brown">Appointments</h1>
-          <p className="text-gray-500 mt-1 text-sm">{stats?.total ?? 0} total appointments</p>
+          <span className="inline-flex items-center rounded-full border border-[#B1C5F6] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#3164DE]">
+            Schedule view
+          </span>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#393C4D]">Appointments</h1>
+          <p className="mt-2 text-sm leading-6 text-[#8592AD]">
+            {stats?.total ?? 0} appointments tracked across the live clinic diary.
+          </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="inline-flex items-center bg-gray-100 rounded-lg p-1">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex items-center rounded-2xl border border-[#D6E0F8] bg-[#D6E0F8]/65 p-1">
             <ViewTab active={view === 'schedule'} onClick={() => setView('schedule')} icon={CalendarDays} label="Schedule" />
             <ViewTab active={view === 'list'}     onClick={() => setView('list')}     icon={List}         label="List" />
           </div>
 
           <button
             onClick={openCreate}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-brand-taupe hover:bg-brand-brown rounded-lg transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-2xl bg-[#3164DE] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_18px_35px_-22px_rgba(49,100,222,0.95)] transition hover:bg-[#274fb5]"
           >
             <Plus size={15} /> New Appointment
           </button>
@@ -186,16 +191,19 @@ export default function Appointments({
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          ['Scheduled',  stats?.scheduled,  'text-amber-600'],
-          ['Confirmed',  stats?.confirmed,  'text-emerald-600'],
-          ['Completed',  stats?.completed,  'text-blue-600'],
-          ['Cancelled',  stats?.cancelled,  'text-red-500'],
-        ].map(([label, count, color]) => (
-          <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-            <p className={`text-2xl font-bold ${color}`}>{count ?? 0}</p>
-            <p className="text-xs text-gray-400 mt-1 uppercase tracking-wide">{label}</p>
+          ['Scheduled',  stats?.scheduled,  'bg-[#D6E0F8]', 'text-[#3164DE]'],
+          ['Confirmed',  stats?.confirmed,  'bg-[#EAF8F0]', 'text-[#15823F]'],
+          ['Completed',  stats?.completed,  'bg-[#EEF4FF]', 'text-[#4A71D2]'],
+          ['Cancelled',  stats?.cancelled,  'bg-[#FFF1F1]', 'text-[#C14A4A]'],
+        ].map(([label, count, tint, color]) => (
+          <div key={label} className="rounded-3xl border border-[#D6E0F8] bg-white p-5 shadow-[0_24px_60px_-46px_rgba(57,60,77,0.35)]">
+            <div className={`mb-4 inline-flex rounded-2xl px-3 py-2 text-xs font-semibold ${tint} ${color}`}>
+              {label}
+            </div>
+            <p className={`text-3xl font-semibold tracking-tight ${color}`}>{count ?? 0}</p>
+            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#8592AD]">Live count</p>
           </div>
         ))}
       </div>
@@ -220,7 +228,7 @@ export default function Appointments({
               <select
                 value={getColumnFilter('status')}
                 onChange={(e) => setColumnFilter('status', e.target.value)}
-                className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-taupe/25 focus:border-brand-taupe"
+                className="rounded-xl border border-[#D6E0F8] bg-white px-3 py-2 text-sm text-[#393C4D] focus:border-[#3164DE] focus:outline-none focus:ring-4 focus:ring-[#B1C5F6]/40"
               >
                 <option value="">All statuses</option>
                 {STATUS_OPTIONS.map((s) => (
@@ -231,7 +239,7 @@ export default function Appointments({
                 type="date"
                 value={getColumnFilter('start_time')}
                 onChange={(e) => setColumnFilter('start_time', e.target.value)}
-                className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-taupe/25 focus:border-brand-taupe"
+                className="rounded-xl border border-[#D6E0F8] bg-white px-3 py-2 text-sm text-[#393C4D] focus:border-[#3164DE] focus:outline-none focus:ring-4 focus:ring-[#B1C5F6]/40"
               />
               {(getColumnFilter('status') || getColumnFilter('start_time')) && (
                 <button
@@ -240,7 +248,7 @@ export default function Appointments({
                     setColumnFilter('status', '')
                     setColumnFilter('start_time', '')
                   }}
-                  className="text-xs text-gray-500 hover:text-brand-brown px-2"
+                  className="px-2 text-xs text-[#8592AD] hover:text-[#393C4D]"
                 >
                   Clear
                 </button>
@@ -283,10 +291,10 @@ function ViewTab({ active, onClick, icon: Icon, label }) {
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+      className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
         active
-          ? 'bg-white text-brand-brown shadow-sm'
-          : 'text-gray-500 hover:text-gray-700'
+          ? 'border border-[#B1C5F6] bg-white text-[#3164DE] shadow-sm'
+          : 'text-[#6F7F9D] hover:text-[#393C4D]'
       }`}
     >
       <Icon size={14} />
@@ -295,14 +303,14 @@ function ViewTab({ active, onClick, icon: Icon, label }) {
   )
 }
 
-function IconBtn({ title, onClick, icon: Icon, colorClass = 'text-gray-500 hover:bg-gray-100' }) {
+function IconBtn({ title, onClick, icon: Icon, colorClass = 'text-[#8592AD] hover:bg-[#F3F6FB]' }) {
   return (
     <button
       type="button"
       title={title}
       aria-label={title}
       onClick={onClick}
-      className={`p-1.5 rounded-md transition-colors ${colorClass}`}
+      className={`rounded-lg p-1.5 transition-colors ${colorClass}`}
     >
       <Icon size={15} />
     </button>
@@ -311,7 +319,7 @@ function IconBtn({ title, onClick, icon: Icon, colorClass = 'text-gray-500 hover
 
 function StatusBadge({ status }) {
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[status] || 'bg-gray-100 text-gray-600'}`}>
+    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium capitalize ${STATUS_STYLES[status] || 'border border-[#8592AD]/10 bg-[#F3F6FB] text-[#6D7991]'}`}>
       {String(status).replace('_', ' ')}
     </span>
   )
