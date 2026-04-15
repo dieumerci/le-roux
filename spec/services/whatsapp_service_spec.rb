@@ -87,6 +87,41 @@ RSpec.describe WhatsappService do
       end
     end
 
+    context "when the AI claims a booking but never extracted a date/time" do
+      let!(:patient) { create(:patient, phone: "+27688888888") }
+
+      it "rewrites the optimistic AI reply with an honest fallback" do
+        # The classifier failed to normalize a relative date like
+        # "Friday at 11am" into ISO format, so entities are empty —
+        # but the response generator still hallucinated a confirmation.
+        # This is the most common real-world lying-bot path.
+        allow(ai_service).to receive(:process_message).and_return({
+          response: "Perfect! I have you booked for Friday at 11am.",
+          intent: "book",
+          entities: {}
+        })
+
+        result = service.handle_incoming(from: "+27688888888", message: "Book me Friday 11am")
+
+        expect(result[:response]).to eq(WhatsappService::BOOKING_FAILED_FALLBACK)
+        expect(Appointment.where(patient: patient).count).to eq(0)
+      end
+
+      it "leaves a genuine clarifying reply alone" do
+        # Multi-turn gathering: AI is still asking for preferences and
+        # is NOT claiming a booking. We must not rewrite this.
+        allow(ai_service).to receive(:process_message).and_return({
+          response: "Sure! What day and time works best for you?",
+          intent: "book",
+          entities: {}
+        })
+
+        result = service.handle_incoming(from: "+27688888889", message: "I'd like to book")
+
+        expect(result[:response]).to include("What day")
+      end
+    end
+
     context "with a confirmation intent" do
       let!(:patient) { create(:patient, phone: "+27633333333") }
 

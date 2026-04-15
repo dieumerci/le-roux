@@ -108,22 +108,66 @@ class WhatsappService
     "taken, or our calendar isn't reachable right now. Could you " \
     "try a different time, or call the practice directly?".freeze
 
+  # Phrases that indicate the AI's free-text reply is *claiming* a
+  # confirmed booking. If we see any of these but didn't actually
+  # persist an Appointment, we must rewrite the reply — otherwise the
+  # bot lies to the patient. Kept deliberately broad; false positives
+  # here just mean we replace a vague AI message with a clearer one.
+  BOOKING_CLAIM_PHRASES = [
+    "i have you booked",
+    "you're booked",
+    "youre booked",
+    "you are booked",
+    "you're confirmed",
+    "you are confirmed",
+    "appointment is confirmed",
+    "appointment is booked",
+    "i've booked",
+    "ive booked",
+    "i've scheduled",
+    "ive scheduled",
+    "all set for",
+    "see you on",
+    "see you at"
+  ].freeze
+
   def handle_booking(result, patient, conversation)
     entities = result[:entities] || {}
     date = entities[:date]
     time = entities[:time]
 
-    # No concrete date/time yet — the AI is still gathering preferences
-    # over multiple turns. Nothing to verify; let the AI text stand.
-    return unless date.present? && time.present?
+    Rails.logger.info(
+      "[WhatsApp] handle_booking intent=book date=#{date.inspect} " \
+      "time=#{time.inspect} treatment=#{entities[:treatment].inspect}"
+    )
 
-    appointment = attempt_booking(patient, date, time, entities[:treatment])
+    appointment = nil
+    if date.present? && time.present?
+      appointment = attempt_booking(patient, date, time, entities[:treatment])
+    end
 
-    if appointment.nil?
-      # Booking was attempted (date+time present) but didn't persist.
-      # Replace the AI's optimistic confirmation with an honest reply.
+    return if appointment
+
+    # We did NOT persist an Appointment — either because the classifier
+    # didn't normalize the date/time (relative phrases like "Friday")
+    # or because attempt_booking failed. If the AI's free text is
+    # *claiming* a booking, rewrite it so the controller's TwiML reply
+    # matches reality. If it's still gathering info ("what day works?"),
+    # leave it alone.
+    if booking_claim?(result[:response])
+      Rails.logger.warn(
+        "[WhatsApp] AI claimed a booking but no Appointment was persisted; " \
+        "rewriting response. date=#{date.inspect} time=#{time.inspect}"
+      )
       result[:response] = BOOKING_FAILED_FALLBACK
     end
+  end
+
+  def booking_claim?(response)
+    return false if response.blank?
+
+    text = response.downcase
+    BOOKING_CLAIM_PHRASES.any? { |phrase| text.include?(phrase) }
   end
 
   # Returns the persisted Appointment on success, or nil on any
