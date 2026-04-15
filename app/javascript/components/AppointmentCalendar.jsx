@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { router } from '@inertiajs/react'
 import { CalendarRange, Clock3, Search, Sparkles } from 'lucide-react'
 import FullCalendar from '@fullcalendar/react'
@@ -76,11 +76,13 @@ const formatRange = (start, end) => {
   return `${formatClock(start)} - ${formatClock(end)}`
 }
 
-const toMillis = (value) => {
-  if (!value) return null
-  const stamp = Date.parse(value)
-  return Number.isNaN(stamp) ? null : stamp
-}
+// Stable, browser-tz-independent identifier for a FullCalendar visible
+// range. We intentionally avoid getTime()/Date.parse comparisons here:
+// FC's `startStr`/`endStr` are deterministic ISO strings derived from
+// the view's anchor date, so two equivalent ranges always stringify
+// identically regardless of browser timezone, DST boundaries, or
+// sub-second normalization differences between Inertia round-trips.
+const rangeKey = (view, startStr, endStr) => `${view}|${startStr}|${endStr}`
 
 export default function AppointmentCalendar({
   appointments = [],
@@ -88,20 +90,17 @@ export default function AppointmentCalendar({
   calendarMeta = {},
 }) {
   const calendarRef = useRef(null)
-  const loadedRangeRef = useRef({
-    startMs: toMillis(calendarMeta.range_start),
-    endMs: toMillis(calendarMeta.range_end),
-    view: calendarMeta.view || DEFAULT_CALENDAR_VIEW,
-  })
+  // `loadedRangeKeyRef` tracks the last visible range we've already
+  // fetched data for. `hasMountedRef` guards the very first datesSet
+  // fire (which always corresponds to the data the server JUST sent
+  // us in props — re-fetching it is wasted work and historically
+  // raced with FullCalendar's internal event-source effect, causing
+  // a runaway router.get loop that left the calendar perpetually
+  // empty). See git history for the previous ms-based comparison
+  // that drifted across browser timezones.
+  const loadedRangeKeyRef = useRef(null)
+  const hasMountedRef = useRef(false)
   const [search, setSearch] = useState('')
-
-  useEffect(() => {
-    loadedRangeRef.current = {
-      startMs: toMillis(calendarMeta.range_start),
-      endMs: toMillis(calendarMeta.range_end),
-      view: calendarMeta.view || DEFAULT_CALENDAR_VIEW,
-    }
-  }, [calendarMeta.range_start, calendarMeta.range_end, calendarMeta.view])
 
   // Filter appointments client-side by search text. Looks at patient
   // name, phone, reason, and status so a single input covers every
@@ -178,24 +177,29 @@ export default function AppointmentCalendar({
   }
 
   const handleDatesSet = (info) => {
-    const anchorDate = info.view.currentStart
-      ? info.view.currentStart.toISOString().slice(0, 10)
-      : info.start.toISOString().slice(0, 10)
-    const nextRange = {
-      startMs: info.start.getTime(),
-      endMs: info.end.getTime(),
-      view: info.view.type,
-    }
+    const nextKey = rangeKey(info.view.type, info.startStr, info.endStr)
 
-    if (
-      loadedRangeRef.current.startMs === nextRange.startMs &&
-      loadedRangeRef.current.endMs === nextRange.endMs &&
-      loadedRangeRef.current.view === nextRange.view
-    ) {
+    // First fire is the initial mount — the server already sent us
+    // calendar_appointments for this exact range, so re-fetching is
+    // redundant AND was the trigger for the runaway refresh loop.
+    // Just record the key and bail.
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true
+      loadedRangeKeyRef.current = nextKey
       return
     }
 
-    loadedRangeRef.current = nextRange
+    // Same range as last time (e.g. FC re-fired datesSet because its
+    // events prop changed, not because the user navigated). Bail.
+    if (loadedRangeKeyRef.current === nextKey) {
+      return
+    }
+
+    loadedRangeKeyRef.current = nextKey
+
+    const anchorDate = info.view.currentStart
+      ? info.view.currentStart.toISOString().slice(0, 10)
+      : info.start.toISOString().slice(0, 10)
 
     router.get('/appointments', {
       calendar_start: info.start.toISOString(),
