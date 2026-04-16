@@ -153,8 +153,8 @@ RSpec.describe AiService do
 
   describe "PRICING" do
     it "knows consultation and cleaning prices" do
-      expect(AiService::PRICING["consultation"]).to eq("R850 (includes x-rays)")
-      expect(AiService::PRICING["cleaning"]).to eq("R1,300")
+      expect(AiService::PRICING["consultation"]).to eq("approximately R850 (may include X-rays, excludes 2D/3D scans)")
+      expect(AiService::PRICING["cleaning"]).to eq("approximately R1,500")
     end
   end
 

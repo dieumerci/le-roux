@@ -128,25 +128,28 @@ class WhatsappService
 
   EMERGENCY_PHONE = "071 884 3204".freeze
 
-  PRACTICE_ADDRESS = "Unit 2, Amorosa Office Park\nCorner of Doreen Road, Lawrence Rd\nAmorosa, Johannesburg, 2040".freeze
+  PRACTICE_ADDRESS = "Unit 2, Amorosa Office Park, Corner of Doreen Road & Lawrence Rd, Amorosa, Roodepoort, Johannesburg, 2040".freeze
 
-  PRACTICE_MAP_LINK = "https://www.google.com/maps/place/Dr+Chalita+Johnson+le+Roux/@-26.0958593,27.8679389,15z/data=!4m5!3m4!1s0x0:0x23a2741b6ea05a25!8m2!3d-26.0958593!4d27.8679389?shorturl=1".freeze
+  PRACTICE_MAP_LINK = "https://maps.app.goo.gl/3iHKg7AMa8qRcfLf6".freeze
 
-  PRACTICE_DIRECTIONS = <<~DIRS.strip
-    Directions from Hendrik Potgieter Rd:
-    Turn onto Doreen Rd,
-    We are on your left-hand side at the second robot.
-
-    Directions from CR Swart Rd:
-    Turn onto Doreen Rd,
-    We are on your right-hand side at the first robot.
-  DIRS
+  PRACTICE_DIRECTIONS = "From Hendrik Potgieter Rd: Turn onto Doreen Rd, we are on your left-hand side at the second robot. From CR Swart Rd: Turn onto Doreen Rd, we are on your right-hand side at the first robot.".freeze
 
   # Phrases that indicate the AI's free-text reply is *claiming* a
   # confirmed booking. If we see any of these but didn't actually
   # persist an Appointment, we must rewrite the reply — otherwise the
   # bot lies to the patient. Kept deliberately broad; false positives
   # here just mean we replace a vague AI message with a clearer one.
+  # Canvas Section 9: Appointment durations by treatment type
+  APPOINTMENT_DURATIONS = {
+    "check-up"              => 45.minutes,
+    "check up"              => 45.minutes,
+    "checkup"               => 45.minutes,
+    "examination"           => 45.minutes,
+    "cosmetic consultation" => 45.minutes,
+    "cosmetic"              => 45.minutes,
+  }.freeze
+  DEFAULT_DURATION = 30.minutes
+
   BOOKING_CLAIM_PHRASES = [
     # English
     "i have you booked",
@@ -239,7 +242,8 @@ class WhatsappService
   # booking with no row written and no error surfaced.
   def attempt_booking(patient, date, time, treatment)
     start_time = Time.zone.parse("#{date} #{time}")
-    end_time = start_time + GoogleCalendarService::SLOT_DURATION
+    duration = duration_for_treatment(treatment)
+    end_time = start_time + duration
     reason = treatment&.capitalize || "Consultation"
 
     unless start_time > Time.current
@@ -439,8 +443,7 @@ class WhatsappService
     day_name  = appointment.start_time.strftime("%A")
     date_str  = appointment.start_time.strftime("%-d %B %Y")
     time_str  = appointment.start_time.strftime("%H:%M")
-    arrive_at = (appointment.start_time - 15.minutes).strftime("%H:%M")
-    greeting  = time_greeting
+    is_new_patient = patient.first_name == "WhatsApp" || patient.auto_created_placeholder_profile?
 
     after_hours_notice = if after_hours
       "\n\n⏳ This booking was made after hours. We'll confirm your appointment first thing in the morning once we verify the slot is available."
@@ -448,23 +451,19 @@ class WhatsappService
       ""
     end
 
+    new_patient_addon = if is_new_patient
+      "\n\nA reminder that we do not claim directly from medical aid. Patients pay at the practice and can then claim back using the statement we provide.\n\nPlease arrive 10 minutes early so we can complete your patient file."
+    else
+      ""
+    end
+
     body = <<~MSG.strip
-      #{greeting},
+      Your appointment is booked for #{day_name}, #{date_str} at #{time_str}.#{after_hours_notice}
 
-      Appointment has been booked for
+      #{PRACTICE_ADDRESS}
+      Google Maps Link: #{PRACTICE_MAP_LINK}#{new_patient_addon}
 
-      #{day_name}
-      #{date_str}
-      #{time_str}#{after_hours_notice}
-
-      Please arrive at #{arrive_at} to open a new patient file.
-
-      📍 #{PRACTICE_ADDRESS}
-
-      Map: #{PRACTICE_MAP_LINK}
-
-      Looking forward to seeing you,
-      Dr Chalita & team 🌸🌿
+      If you need to change anything, just reply here.
     MSG
 
     template_service&.send_text(patient.phone, body)
@@ -532,6 +531,13 @@ class WhatsappService
     Rails.logger.info("[WhatsApp] Updated patient name: #{patient.phone} → #{first} #{last}")
   rescue StandardError => e
     Rails.logger.warn("[WhatsApp] Failed to update patient name: #{e.message}")
+  end
+
+  def duration_for_treatment(treatment)
+    return DEFAULT_DURATION if treatment.blank?
+
+    key = treatment.downcase.strip
+    APPOINTMENT_DURATIONS[key] || DEFAULT_DURATION
   end
 
   def normalize_phone(phone)
