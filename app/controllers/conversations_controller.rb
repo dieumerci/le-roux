@@ -1,14 +1,19 @@
 class ConversationsController < ApplicationController
   def index
-    page_data = dev_page_cache("conversations", "index", params[:channel], params[:status], params[:source]) do
+    page_data = dev_page_cache("conversations", "index", params[:channel], params[:status], params[:source], params[:tag]) do
       conversations = Conversation.includes(:patient).order(updated_at: :desc)
       conversations = conversations.by_channel(params[:channel]) if params[:channel].present?
       conversations = conversations.where(status: params[:status]) if params[:status].present?
       conversations = conversations.where(source: params[:source]) if params[:source].present?
+      conversations = conversations.tagged(params[:tag]) if params[:tag].present?
+
+      # Collect all unique tags across conversations for autocomplete
+      all_tags = Conversation.where.not(tags: []).pluck(:tags).flatten.uniq.sort
 
       {
         conversations: conversations.limit(100).map { |c| conversation_props(c) },
-        filters: { channel: params[:channel], status: params[:status], source: params[:source] }
+        all_tags: all_tags,
+        filters: { channel: params[:channel], status: params[:status], source: params[:source], tag: params[:tag] }
       }
     end
 
@@ -18,10 +23,10 @@ class ConversationsController < ApplicationController
   # POST /conversations/import
   #
   # Phase 10 — historical WhatsApp chat import. Accepts a multipart
-  # file upload (.json preferred, .txt fallback) and delegates to
-  # WhatsappImportService. The import is idempotent via external_id
-  # so re-uploading the same file updates existing rows instead of
-  # creating duplicates.
+  # file upload (.json, .txt, or .zip containing .txt/.json files)
+  # and delegates to WhatsappImportService. The import is idempotent
+  # via external_id so re-uploading the same file updates existing
+  # rows instead of creating duplicates.
   def import
     file = params[:file]
     return redirect_to(conversations_path, alert: "Please choose a file to import.", status: :see_other) if file.blank?
@@ -76,6 +81,50 @@ class ConversationsController < ApplicationController
       alert: "Send failed: #{e.message}", status: :see_other
   end
 
+  # PATCH /conversations/:id/update_tags
+  #
+  # Phase 10.3 — update conversation tags for AI improvement workflow.
+  # Accepts { tags: ["tag1", "tag2"] } and replaces the tags array.
+  def update_tags
+    conversation = Conversation.find(params[:id])
+    tags = Array(params[:tags]).map(&:strip).reject(&:blank?).uniq
+    conversation.update!(tags: tags)
+    expire_conversation_caches!
+
+    redirect_back fallback_location: conversation_path(conversation),
+      notice: "Tags updated", status: :see_other
+  end
+
+  # GET /conversations/export_tagged
+  #
+  # Phase 10.3 — export tagged conversations as JSON for prompt engineering.
+  # Filter by tag via ?tag=good-booking-flow parameter.
+  def export_tagged
+    conversations = Conversation.includes(:patient).order(updated_at: :desc)
+    conversations = conversations.tagged(params[:tag]) if params[:tag].present?
+    conversations = conversations.limit(500)
+
+    export = conversations.map do |c|
+      {
+        id: c.id,
+        patient_phone: c.patient.phone,
+        patient_name: c.patient.full_name,
+        channel: c.channel,
+        source: c.source,
+        topic: c.topic,
+        language: c.language,
+        tags: c.tags,
+        messages: c.messages,
+        started_at: c.started_at&.iso8601,
+        ended_at: c.ended_at&.iso8601
+      }
+    end
+
+    send_data export.to_json,
+      filename: "conversations-#{params[:tag] || 'all'}-#{Date.current.iso8601}.json",
+      type: "application/json"
+  end
+
   def show
     page_data = dev_page_cache("conversations", "show", params[:id]) do
       conversation = Conversation.includes(:patient).find(params[:id])
@@ -101,6 +150,7 @@ class ConversationsController < ApplicationController
       status: conversation.status,
       source: conversation.source,
       topic: conversation.topic,
+      tags: conversation.tags || [],
       message_count: conversation.messages&.length || 0,
       last_message: conversation.messages&.last&.dig("content")&.truncate(80),
       started_at: conversation.started_at&.iso8601,
@@ -129,6 +179,7 @@ class ConversationsController < ApplicationController
       status: conversation.status,
       source: conversation.source,
       topic: conversation.topic,
+      tags: conversation.tags || [],
       messages: conversation.messages || [],
       started_at: conversation.started_at&.iso8601,
       ended_at: conversation.ended_at&.iso8601

@@ -50,6 +50,14 @@ class Patient < ApplicationRecord
       !medical_history&.any_data?
   end
 
+  # Imported patients with placeholder names or incomplete profiles
+  # need manual review (merging or completing their details).
+  def needs_review?
+    auto_created_placeholder_profile? ||
+      last_name == "(imported)" ||
+      first_name == "Unknown"
+  end
+
   private
 
   def normalize_phone!

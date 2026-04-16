@@ -68,17 +68,57 @@ class WhatsappImportService
   end
 
   def self.import_upload(uploaded_file, owner_name: nil, patient_phone: nil)
-    content    = uploaded_file.read
     source_key = uploaded_file.original_filename.to_s
     ext        = File.extname(source_key).downcase
 
-    if ext == ".json"
-      new(source_key: source_key).import_json(content)
+    if ext == ".zip"
+      import_zip(uploaded_file, owner_name: owner_name, patient_phone: patient_phone)
     else
-      new(source_key: source_key).import_txt(
-        content, owner_name: owner_name, patient_phone: patient_phone
-      )
+      content = uploaded_file.read
+      if ext == ".json"
+        new(source_key: source_key).import_json(content)
+      else
+        new(source_key: source_key).import_txt(
+          content, owner_name: owner_name, patient_phone: patient_phone
+        )
+      end
     end
+  end
+
+  # Extract .txt files from a .zip and process each one.
+  # Returns an aggregate Result across all entries.
+  def self.import_zip(uploaded_file, owner_name: nil, patient_phone: nil)
+    aggregate = Result.new(created: 0, updated: 0, skipped: 0, errors: [])
+
+    Zip::File.open_buffer(uploaded_file) do |zip|
+      zip.each do |entry|
+        next if entry.directory?
+
+        entry_ext = File.extname(entry.name).downcase
+        next unless entry_ext.in?(%w[.txt .json])
+
+        content    = entry.get_input_stream.read.force_encoding("UTF-8")
+        source_key = entry.name
+
+        result =
+          if entry_ext == ".json"
+            new(source_key: source_key).import_json(content)
+          else
+            new(source_key: source_key).import_txt(
+              content, owner_name: owner_name, patient_phone: patient_phone
+            )
+          end
+
+        aggregate.created += result.created
+        aggregate.updated += result.updated
+        aggregate.skipped += result.skipped
+        aggregate.errors.concat(result.errors)
+      end
+    end
+
+    aggregate
+  rescue Zip::Error => e
+    raise ImportError, "Invalid zip file: #{e.message}"
   end
 
   def initialize(source_key:)

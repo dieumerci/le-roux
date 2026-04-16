@@ -22,7 +22,12 @@ class PatientsController < ApplicationController
           active: Appointment.where("start_time >= ?", ACTIVE_WINDOW_MONTHS.months.ago)
             .distinct
             .count(:patient_id),
-          new_this_month: Patient.where(created_at: Time.current.beginning_of_month..).count
+          new_this_month: Patient.where(created_at: Time.current.beginning_of_month..).count,
+          needs_review: Patient.where(last_name: "(imported)")
+            .or(Patient.where(first_name: "Unknown"))
+            .or(Patient.where(first_name: "WhatsApp", last_name: "Patient"))
+            .or(Patient.where(first_name: "Phone", last_name: "Caller"))
+            .count
         }
       end
 
@@ -171,6 +176,7 @@ class PatientsController < ApplicationController
       appointment_count: all.size,
       last_visit: last_visit&.start_time&.iso8601,
       next_appointment: next_appt&.start_time&.iso8601,
+      needs_review: patient.needs_review?,
       # Embedded medical history so the Edit-from-list modal has the
       # data without an extra fetch. Hash matches medical_history_props.
       medical_history: medical_history_props(patient)

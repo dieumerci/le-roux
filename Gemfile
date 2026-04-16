@@ -43,6 +43,9 @@ gem "googleauth"
 # === AI / LLM - Natural language understanding ===
 gem "anthropic", "~> 0.3"
 
+# === Zip file processing (WhatsApp bulk import) ===
+gem "rubyzip", "~> 2.3", require: "zip"
+
 # === Frontend - Inertia.js + React dashboard ===
 gem "inertia_rails"
 gem "vite_rails"

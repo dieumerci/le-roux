@@ -10,12 +10,9 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_16_140000) do
-  # Supabase uses an "extensions" schema; create only if missing for local/test.
-  connection.execute("CREATE SCHEMA IF NOT EXISTS extensions")
-
+ActiveRecord::Schema[8.1].define(version: 2026_04_16_150000) do
   # These are extensions that must be enabled in order to support this database
-  enable_extension "plpgsql"
+  enable_extension "pg_catalog.plpgsql"
 
   create_table "public.analytics_events", force: :cascade do |t|
     t.datetime "created_at", null: false
@@ -97,6 +94,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_16_140000) do
     t.string "source", default: "live", null: false
     t.datetime "started_at"
     t.string "status", default: "active", null: false
+    t.jsonb "tags", default: [], null: false
     t.string "topic"
     t.datetime "updated_at", null: false
     t.index ["channel"], name: "index_conversations_on_channel"

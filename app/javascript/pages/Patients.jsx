@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { Link } from '@inertiajs/react'
-import { Eye, Pencil, Users, UserCheck, UserPlus, Plus } from 'lucide-react'
+import { Eye, Pencil, Users, UserCheck, UserPlus, Plus, AlertTriangle } from 'lucide-react'
 import DashboardLayout from '../layouts/DashboardLayout'
 import DataTable from '../components/DataTable'
 import PatientFormModal from '../components/PatientFormModal'
@@ -14,6 +14,11 @@ export default function Patients({ patients = [], stats }) {
 
   const [modalMode, setModalMode] = useState(null)
   const [selected, setSelected]   = useState(null)
+  const [showReviewOnly, setShowReviewOnly] = useState(false)
+
+  const displayPatients = showReviewOnly
+    ? patients.filter((p) => p.needs_review)
+    : patients
 
   const openCreate = () => { setSelected(null); setModalMode('create') }
   const openEdit   = (p) => { setSelected(p);   setModalMode('edit') }
@@ -151,7 +156,7 @@ export default function Patients({ patients = [], stats }) {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard
           label={t('pat_total')}
           value={stats?.total ?? 0}
@@ -173,11 +178,25 @@ export default function Patients({ patients = [], stats }) {
           color="text-brand-secondary"
           tone="bg-brand-primary/10"
         />
+        <button
+          type="button"
+          onClick={() => setShowReviewOnly((v) => !v)}
+          className="text-left"
+        >
+          <StatCard
+            label={t('pat_needs_review')}
+            value={stats?.needs_review ?? 0}
+            icon={AlertTriangle}
+            color={showReviewOnly ? 'text-white' : 'text-amber-600'}
+            tone={showReviewOnly ? 'bg-amber-500' : 'bg-amber-50'}
+            active={showReviewOnly}
+          />
+        </button>
       </div>
 
       <DataTable
         columns={columns}
-        data={patients}
+        data={displayPatients}
         globalFilterPlaceholder={t('pat_search')}
         initialSort={[{ id: 'full_name', desc: false }]}
         pageSize={10}
@@ -225,14 +244,16 @@ export default function Patients({ patients = [], stats }) {
   )
 }
 
-function StatCard({ label, value, icon: Icon, color, tone = 'bg-brand-surface' }) {
+function StatCard({ label, value, icon: Icon, color, tone = 'bg-brand-surface', active = false }) {
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-brand-border bg-white p-4 shadow-sm">
+    <div className={`flex items-center gap-4 rounded-xl border p-4 shadow-sm ${
+      active ? 'border-amber-400 bg-amber-50 ring-2 ring-amber-200' : 'border-brand-border bg-white'
+    }`}>
       <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl ${tone}`}>
         <Icon size={18} className={color} />
       </div>
       <div>
-        <p className={`text-2xl font-bold ${color}`}>{value}</p>
+        <p className={`text-2xl font-bold ${active ? 'text-amber-700' : color}`}>{value}</p>
         <p className="text-xs uppercase tracking-wide text-brand-muted">{label}</p>
       </div>
     </div>

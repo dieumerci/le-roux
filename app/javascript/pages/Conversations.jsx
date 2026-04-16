@@ -10,7 +10,7 @@ import { useLanguage } from '../lib/LanguageContext'
 
 const PAGE_SIZE = 10
 
-export default function Conversations({ conversations = [], filters }) {
+export default function Conversations({ conversations = [], filters, all_tags = [] }) {
   const { t, language } = useLanguage()
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(0)
@@ -84,6 +84,16 @@ export default function Conversations({ conversations = [], filters }) {
             { value: 'voice', label: t('conv_voice') },
           ]}
         />
+        {all_tags.length > 0 && (
+          <FilterPill
+            value={filters?.tag || ''}
+            onChange={(v) => handleFilter('tag', v)}
+            options={[
+              { value: '', label: t('conv_all_tags') },
+              ...all_tags.map((tag) => ({ value: tag, label: tag })),
+            ]}
+          />
+        )}
       </div>
 
       {/* Row list */}
@@ -177,6 +187,14 @@ function ConversationRow({ conv, t, language }) {
               {t('conv_imported')}
             </span>
           )}
+          {conv.tags?.slice(0, 2).map((tag) => (
+            <span key={tag} className="rounded-full bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-600 border border-sky-100">
+              {tag}
+            </span>
+          ))}
+          {conv.tags?.length > 2 && (
+            <span className="text-[10px] text-brand-muted">+{conv.tags.length - 2}</span>
+          )}
         </div>
         <p className="mt-0.5 truncate text-[11px] text-brand-muted">{conv.patient_phone}</p>
       </div>
@@ -233,6 +251,7 @@ function ImportModal({ open, onClose, t }) {
   if (!open) return null
 
   const isTxt = file && /\.txt$/i.test(file.name)
+  const isZip = file && /\.zip$/i.test(file.name)
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -242,7 +261,7 @@ function ImportModal({ open, onClose, t }) {
     }
     const formData = new FormData()
     formData.append('file', file)
-    if (isTxt) {
+    if (isTxt || isZip) {
       formData.append('owner_name', ownerName)
       formData.append('patient_phone', patientPhone)
     }
@@ -272,7 +291,7 @@ function ImportModal({ open, onClose, t }) {
             </label>
             <input
               type="file"
-              accept=".json,.txt"
+              accept=".json,.txt,.zip"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
               className="block w-full text-xs text-brand-muted file:mr-3 file:rounded-2xl file:border-0 file:bg-brand-surface file:px-3 file:py-2 file:text-xs file:font-semibold file:text-brand-primary hover:file:bg-brand-accent"
             />
@@ -281,7 +300,7 @@ function ImportModal({ open, onClose, t }) {
             </p>
           </div>
 
-          {isTxt && (
+          {(isTxt || isZip) && (
             <>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-brand-muted">

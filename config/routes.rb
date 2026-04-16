@@ -32,9 +32,11 @@ Rails.application.routes.draw do
   resources :conversations, only: [:index, :show] do
     collection do
       post :import
+      get :export_tagged
     end
     member do
       post :reply
+      patch :update_tags
     end
   end
   get "search", to: "search#index"

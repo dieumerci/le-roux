@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Link, router } from '@inertiajs/react'
 import { toast } from 'sonner'
-import { ArrowLeft, Send, Phone, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Send, Phone, MessageCircle, Tag, X as XIcon, Plus } from 'lucide-react'
 import DashboardLayout from '../layouts/DashboardLayout'
 
 // ── Conversation detail + reply composer ───────────────────────────
@@ -103,6 +103,7 @@ export default function ConversationShow({ conversation }) {
             Topic: <span className="font-medium text-sky-700">{conv.topic}</span>
           </p>
         )}
+        <TagEditor conversationId={conv.id} initialTags={conv.tags || []} />
       </div>
 
       {/* Chat card */}
@@ -207,6 +208,114 @@ function initials(name = '') {
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase() || '')
     .join('') || '·'
+}
+
+function TagEditor({ conversationId, initialTags }) {
+  const [tags, setTags] = useState(initialTags)
+  const [input, setInput] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const SUGGESTED = [
+    'good-booking-flow', 'escalation-needed', 'afrikaans-example',
+    'english-example', 'cancellation-flow', 'faq-quality',
+    'training-data', 'needs-improvement', 'urgent-case'
+  ]
+
+  const addTag = (tag) => {
+    const normalized = tag.toLowerCase().trim().replace(/\s+/g, '-')
+    if (!normalized || tags.includes(normalized)) return
+    const newTags = [...tags, normalized]
+    setTags(newTags)
+    saveTags(newTags)
+    setInput('')
+  }
+
+  const removeTag = (tag) => {
+    const newTags = tags.filter((t) => t !== tag)
+    setTags(newTags)
+    saveTags(newTags)
+  }
+
+  const saveTags = (newTags) => {
+    setSaving(true)
+    router.patch(`/conversations/${conversationId}/update_tags`, { tags: newTags }, {
+      preserveScroll: true,
+      onSuccess: () => toast.success('Tags updated'),
+      onError: () => toast.error('Failed to update tags'),
+      onFinish: () => setSaving(false),
+    })
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      addTag(input)
+    }
+  }
+
+  const suggestions = SUGGESTED.filter((s) => !tags.includes(s) && s.includes(input.toLowerCase()))
+
+  return (
+    <div className="mt-3 pt-3 border-t border-gray-100">
+      <div className="flex items-center gap-1.5 mb-2">
+        <Tag size={12} className="text-gray-400" />
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Tags</span>
+        {saving && <span className="text-[10px] text-sky-500 animate-pulse">Saving…</span>}
+      </div>
+
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {tags.map((tag) => (
+          <span
+            key={tag}
+            className="inline-flex items-center gap-1 bg-sky-50 text-sky-700 border border-sky-100 px-2 py-0.5 rounded-full text-[11px] font-medium"
+          >
+            {tag}
+            <button
+              type="button"
+              onClick={() => removeTag(tag)}
+              className="hover:text-sky-900 transition-colors"
+            >
+              <XIcon size={10} />
+            </button>
+          </span>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Add tag…"
+          className="flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-400"
+        />
+        <button
+          type="button"
+          onClick={() => addTag(input)}
+          disabled={!input.trim()}
+          className="text-sky-600 hover:text-sky-700 disabled:opacity-40 transition-colors"
+        >
+          <Plus size={14} />
+        </button>
+      </div>
+
+      {input && suggestions.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {suggestions.slice(0, 5).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => addTag(s)}
+              className="text-[10px] text-gray-500 bg-gray-100 hover:bg-sky-50 hover:text-sky-600 border border-gray-200 rounded-full px-2 py-0.5 transition-colors"
+            >
+              + {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function formatTime(iso) {

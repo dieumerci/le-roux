@@ -52,14 +52,14 @@ RSpec.describe 'Performance', type: :request do
       queries = capture_queries { get '/patients' }
 
       expect(response).to have_http_status(:ok)
-      expect(queries.size).to be <= 7
+      expect(queries.size).to be <= 8
     end
 
     it 'keeps conversations index queries bounded' do
       queries = capture_queries { get '/conversations' }
 
       expect(response).to have_http_status(:ok)
-      expect(queries.size).to be <= 3
+      expect(queries.size).to be <= 4
     end
 
     it 'keeps reminders index queries bounded' do

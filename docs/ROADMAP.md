@@ -741,20 +741,32 @@ Add production-ready English/Afrikaans support to the AI receptionist, wire in t
 
 The dashboard should be useful from day one, not just for future conversations. This phase backfills the database with real historical data by importing exported WhatsApp chats through the dashboard.
 
-- [ ] **Dashboard upload UI**: add an "Import Conversations" page to the dashboard (file upload input for `.txt` WhatsApp export files, one file per conversation)
-- [ ] **Parser service** (`WhatsappImportService`): parse the standard WhatsApp export format
+### 10.1: Core Import Infrastructure ✅ COMPLETE
+- [x] **Dashboard upload UI**: ImportModal in Conversations page with file upload for `.txt` and `.json` files
+- [x] **Parser service** (`WhatsappImportService`): parse WhatsApp export format (iOS + Android line formats)
   - Extract sender, timestamp, and message body from each line
-  - Identify patient phone number from the conversation file name or first message
+  - Identify patient phone number from caller-supplied param or JSON phone field
   - Group messages into a single `Conversation` record with `channel: "whatsapp"` and `status: "closed"`
-- [ ] **Patient matching**: match phone number to existing `Patient` record; create a stub patient if none exists (first_name from phone, flagged for manual review)
-- [ ] **Appointment detection**: scan conversation text for booking keywords; link to existing `Appointment` records where a match is found by date/time mentioned
-- [ ] **Language capture**: detect/store the dominant language for each imported conversation so English/Afrikaans context is available for future AI handling and analytics
-- [ ] **Duplicate prevention**: skip import if a `Conversation` with the same patient + date range already exists
-- [ ] **Import summary**: return a result object showing: conversations imported, patients created, patients matched, lines skipped
-- [ ] **Dashboard feedback**: display import summary after upload (e.g. "Imported 24 conversations, created 6 new patients, skipped 2 duplicates")
-- [ ] **Bulk import**: support importing a `.zip` of multiple `.txt` files in one upload
-- [ ] **Manual review queue**: conversations with unmatched patients surface in a "Needs Review" list on the Patients page
-- [ ] Test the import flow with a real exported WhatsApp `.txt` file from the current sandbox or production number
+- [x] **Patient matching**: match phone number to existing `Patient` record; create a stub patient if none exists (first_name from display name, last_name "(imported)")
+- [x] **Topic classification**: `WhatsappTopicClassifier` assigns topic via keyword rules (booking, cancellation, emergency, etc.)
+- [x] **Language capture**: `language` field on Conversation model stores detected language
+- [x] **Duplicate prevention**: deterministic `external_id` (SHA1 of source + phone) — re-importing same file updates existing record
+- [x] **Import summary**: Result struct with created/updated/skipped/errors counts
+- [x] **Dashboard feedback**: flash notice shows import results after upload
+- [x] **Import/live filter**: source filter pills on Conversations page ("Imported" / "Live" badges)
+
+### 10.2: Zip Import & Review Queue ✅ COMPLETE
+- [x] **Bulk zip import**: support `.zip` uploads containing multiple `.txt`/`.json` files — extract and process each (rubyzip gem)
+- [x] **Review queue**: "Needs Review" stat card + filter on Patients page surfaces auto-created/imported placeholder patients
+- [x] **Patient detection**: `needs_review?` method on Patient model flags placeholders (WhatsApp Patient, Phone Caller, Unknown, (imported))
+- [ ] **Patient merge**: ability to link an auto-created patient to an existing patient record
+
+### 10.3: AI Improvement Workflow ✅ COMPLETE
+- [x] **Conversation tagging**: `tags` JSONB array column on conversations with migration
+- [x] **Tag management UI**: tag editor on ConversationShow page with suggested tags, autocomplete, add/remove
+- [x] **Curated examples filter**: tag filter pill on Conversations index page, `tagged` scope on Conversation model
+- [x] **Export tagged conversations**: `GET /conversations/export_tagged?tag=...` endpoint exports JSON for prompt engineering
+- [x] **Tag display**: conversation list rows show up to 2 tag chips with overflow count
 
 ## Phase 11: Data Capture & Real Analytics Dashboard
 - [ ] **Enhance Conversation Model**: add `outcome` field (booked, lost, rescheduled, pending), `message_count`, `first_response_time`
