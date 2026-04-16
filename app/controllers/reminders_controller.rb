@@ -16,23 +16,26 @@ class RemindersController < ApplicationController
     window_end = (today + WINDOW_DAYS.days).end_of_day
 
     page_data = dev_page_cache("reminders", "index", today.iso8601) do
-      # Upcoming unconfirmed appointments — the set of rows the
-      # receptionist might want to chase up.
-      reminders = Appointment
+      # ALL upcoming appointments — the receptionist sees the full
+      # picture: pending, confirmed, cancelled, etc.
+      all_upcoming = Appointment
         .includes(:patient, :confirmation_logs)
-        .where(status: [:scheduled])
         .where(start_time: today.beginning_of_day..window_end)
         .order(:start_time)
         .to_a
 
+      pending   = all_upcoming.select { |a| a.scheduled? }
+      confirmed = all_upcoming.select { |a| a.confirmed? }
+
       {
-        reminders: reminders.map { |a| reminder_props(a) },
+        reminders: all_upcoming.map { |a| reminder_props(a) },
         stats: {
-          total_pending: reminders.size,
-          today: reminders.count { |a| a.start_time.to_date == today },
-          tomorrow: reminders.count { |a| a.start_time.to_date == today + 1 },
-          this_week: reminders.size,
-          flagged: reminders.count { |a| a.confirmation_logs.any?(&:flagged) }
+          total: all_upcoming.size,
+          pending: pending.size,
+          confirmed: confirmed.size,
+          today: all_upcoming.count { |a| a.start_time.to_date == today },
+          tomorrow: all_upcoming.count { |a| a.start_time.to_date == today + 1 },
+          flagged: all_upcoming.count { |a| a.confirmation_logs.any?(&:flagged) }
         }
       }
     end
@@ -77,6 +80,7 @@ class RemindersController < ApplicationController
       end_time: appointment.end_time.iso8601,
       reason: appointment.reason,
       status: appointment.status,
+      reminder_status: derive_reminder_status(appointment, latest_log),
       hours_until: ((appointment.start_time - Time.current) / 1.hour).round(1),
       last_attempt: latest_log && {
         method: latest_log.method,
@@ -86,6 +90,36 @@ class RemindersController < ApplicationController
         created_at: latest_log.created_at.iso8601
       }
     }
+  end
+
+  # Derives a human-readable reminder status from the appointment
+  # status + latest confirmation log. Used by the frontend for
+  # the status chip colour.
+  #
+  #   Pending   — appointment is scheduled, no reminder sent yet
+  #   Sent      — reminder was dispatched, awaiting patient reply
+  #   Confirmed — patient confirmed the appointment
+  #   Cancelled — appointment was cancelled
+  #   No Answer — reminder sent but patient didn't respond
+  def derive_reminder_status(appointment, latest_log)
+    return "Cancelled"  if appointment.cancelled?
+    return "Confirmed"  if appointment.confirmed?
+    return "Completed"  if appointment.completed?
+    return "No Show"    if appointment.no_show?
+    return "Rescheduled" if appointment.rescheduled?
+
+    # Appointment is still scheduled — check confirmation log
+    if latest_log.nil?
+      "Pending"
+    elsif latest_log.outcome == "confirmed"
+      "Confirmed"
+    elsif latest_log.outcome.in?(%w[no_answer voicemail])
+      "No Answer"
+    elsif latest_log.outcome.present?
+      latest_log.outcome.titleize
+    else
+      "Sent"
+    end
   end
 
   def expire_reminder_caches!

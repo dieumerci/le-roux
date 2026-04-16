@@ -9,7 +9,7 @@ RSpec.describe 'Reminders', type: :request do
 
     it 'renders the inertia reminders page with upcoming unconfirmed appointments' do
       build_appt(status: :scheduled, start_time: 2.hours.from_now)
-      build_appt(status: :confirmed, start_time: 3.hours.from_now)  # excluded
+      build_appt(status: :confirmed, start_time: 3.hours.from_now)  # included (now shows all statuses)
       build_appt(status: :scheduled, start_time: 2.days.from_now)
       build_appt(status: :scheduled, start_time: 10.days.from_now)  # outside window
 
@@ -28,12 +28,14 @@ RSpec.describe 'Reminders', type: :request do
       expect(ids).not_to include(out_window.id)
     end
 
-    it 'excludes already-confirmed appointments' do
+    it 'includes confirmed appointments with Confirmed status' do
       confirmed = build_appt(status: :confirmed, start_time: 2.hours.from_now)
 
       get '/reminders'
-      ids = inertia.props[:reminders].map { |r| r[:id] }
-      expect(ids).not_to include(confirmed.id)
+      reminders = inertia.props[:reminders]
+      match = reminders.find { |r| r[:id] == confirmed.id }
+      expect(match).to be_present
+      expect(match[:reminder_status]).to eq("Confirmed")
     end
 
   end

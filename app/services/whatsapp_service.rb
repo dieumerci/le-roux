@@ -207,6 +207,16 @@ class WhatsappService
       status: :scheduled
     )
 
+    # Create a confirmation log so the reminders page tracks this
+    # booking from the moment it's created. The outcome is nil
+    # until the patient replies to the WhatsApp confirmation.
+    appointment.confirmation_logs.create!(
+      method: "whatsapp",
+      outcome: nil,
+      attempts: 1,
+      flagged: false
+    )
+
     sync_to_google_calendar(appointment, patient, reason)
     send_confirmation_template(patient, appointment)
     appointment

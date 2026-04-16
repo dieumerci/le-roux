@@ -111,7 +111,17 @@ class AppointmentsController < ApplicationController
         )
       end
 
-    NotificationService.appointment_created(appointment) if appointment.is_a?(Appointment)
+    if appointment.is_a?(Appointment)
+      # Create a pending confirmation log so the reminders page
+      # shows this appointment from the moment it's booked.
+      appointment.confirmation_logs.create!(
+        method: "whatsapp",
+        outcome: nil,
+        attempts: 0,
+        flagged: false
+      )
+      NotificationService.appointment_created(appointment)
+    end
     expire_appointment_caches!
 
     redirect_to appointments_location(appointment.start_time.to_date.iso8601),
