@@ -428,6 +428,9 @@ Establish a single source of truth for styling, consolidate reusable components,
 - [x] **Cache invalidation** → `after_commit` on Appointment model busts all dashboard caches
 - [x] **Reminders page** → shows all upcoming appointments with status chips (Pending/Sent/Confirmed/Cancelled)
 - [x] **Auto-tracking** → ConfirmationLog created automatically when appointment is booked (WhatsApp or UI)
+- [x] **WhatsApp booking confirmation** → branded message with day, date, time, arrival instruction (15 min early), and practice directions from Hendrik Potgieter Rd and CR Swart Rd
+- [x] **Practice location** → corrected from Pretoria to Doreen Rd, Roodepoort (directions from Hendrik Potgieter Rd and CR Swart Rd)
+- [x] **Dashboard redesign** → stat cards (Total Patients, Today's Appointments, New Patients, Total Appointments), weekly appointment chart (recharts BarChart), upcoming appointments sidebar, today's schedule, reminders panel, recent patients table
 - [ ] **Appointment edit/reschedule** → updates in list + calendar + Google
 - [ ] **Appointment cancel** → captures reason, updates status, removes from active calendar view, fires notification
 - [ ] **Patient create / edit** → validation errors surface inline; nested medical history persists

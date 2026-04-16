@@ -108,6 +108,16 @@ class WhatsappService
     "taken, or our calendar isn't reachable right now. Could you " \
     "try a different time, or call the practice directly?".freeze
 
+  PRACTICE_DIRECTIONS = <<~DIRS.strip
+    Directions from Hendrik Potgieter Rd:
+    Turn onto Doreen Rd,
+    We are on your left-hand side at the second robot.
+
+    Directions from CR Swart Rd:
+    Turn onto Doreen Rd,
+    We are on your right-hand side at the first robot.
+  DIRS
+
   # Phrases that indicate the AI's free-text reply is *claiming* a
   # confirmed booking. If we see any of these but didn't actually
   # persist an Appointment, we must rewrite the reply — otherwise the
@@ -353,9 +363,60 @@ class WhatsappService
   # --- Template Sending (best-effort) ---
 
   def send_confirmation_template(patient, appointment)
-    template_service&.send_confirmation(patient, appointment)
-  rescue WhatsappTemplateService::Error => e
-    Rails.logger.warn("[WhatsApp] Template send failed: #{e.message}")
+    # Send detailed booking confirmation with directions via free-form
+    # message (within the 24-hour service window since the patient
+    # just messaged us). Falls back to the Twilio template if the
+    # free-form send fails.
+    send_booking_confirmation_message(patient, appointment)
+  rescue StandardError => e
+    Rails.logger.warn("[WhatsApp] Booking confirmation message failed, trying template: #{e.message}")
+    begin
+      template_service&.send_confirmation(patient, appointment)
+    rescue WhatsappTemplateService::Error => te
+      Rails.logger.warn("[WhatsApp] Template fallback also failed: #{te.message}")
+    end
+  end
+
+  # Sends the branded booking confirmation message with appointment
+  # details and practice directions. Uses the free-form `send_text`
+  # method since the patient is within the 24-hour service window.
+  def send_booking_confirmation_message(patient, appointment)
+    day_name  = appointment.start_time.strftime("%A")
+    date_str  = appointment.start_time.strftime("%-d %B %Y")
+    time_str  = appointment.start_time.strftime("%H:%M")
+    arrive_at = (appointment.start_time - 15.minutes).strftime("%H:%M")
+    greeting  = time_greeting
+
+    body = <<~MSG.strip
+      #{greeting},
+
+      Appointment has been booked for
+
+      #{day_name}
+      #{date_str}
+      #{time_str}
+
+      Please arrive at #{arrive_at} to open a new patient file.
+
+      Looking forward to seeing you,
+      Dr Chalita & team
+      🌸🌿
+
+      #{PRACTICE_DIRECTIONS}
+    MSG
+
+    template_service&.send_text(patient.phone, body)
+  end
+
+  def time_greeting
+    hour = Time.current.hour
+    if hour < 12
+      "Good morning"
+    elsif hour < 17
+      "Good afternoon"
+    else
+      "Good evening"
+    end
   end
 
   def send_reschedule_template(patient, appointment)

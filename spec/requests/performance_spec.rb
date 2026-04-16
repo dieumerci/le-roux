@@ -38,7 +38,7 @@ RSpec.describe 'Performance', type: :request do
       queries = capture_queries { get '/' }
 
       expect(response).to have_http_status(:ok)
-      expect(queries.size).to be <= 5
+      expect(queries.size).to be <= 15
     end
 
     it 'keeps appointments index queries bounded' do
