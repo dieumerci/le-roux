@@ -1,10 +1,10 @@
 # Dr Chalita le Roux AI Receptionist — Development Roadmap
 
-## Current Status: 🚧 Dashboard Stabilization & UI Refresh Track Planned
+## Current Status: 🚧 Phase 9.14 In Progress — Design System + Production Hardening
 
-**Completed**: Phases 1-9, 9.5, 9.7-9.12, 13 (core system + channel integrations + confirmations + current dashboard foundation + audit/data integrity/calendar/N+1/status removal)
-**Current Priority**: Phase 9.14 (Design System Consolidation & Production Hardening), then Phase 9.6 (Dashboard Full Feature Build verification), then Phase 10 (Import Historical Chats)
-**Deferred Until After This Track**: Phase 11 (Data Capture & Analytics), Phase 12 (Billing), Phases 14-17 (Security, Training, Deployment, Enhancements)
+**Completed**: Phases 1-9, 9.5, 9.7-9.12, 13, partial 9.14 (core system + channel integrations + confirmations + dashboard + audits + local-first booking + reminders redesign + calendar fix + WhatsApp honesty guard)
+**Current Priority**: Phase 9.14 (remaining items: component library, inline-style purge, per-page token audit), then Phase 9.6 verification, then Phase 10
+**Deferred**: Phase 11 (Analytics), Phase 12 (Billing), Phases 14-17 (Security, Training, Deployment, Enhancements)
 
 ## Phase 1: Project Setup & Infrastructure
 - [x] Create Rails 8 API-only application
@@ -286,8 +286,13 @@ Build out the full interactive dashboard functionality on top of the Phase 9.5 b
 - [ ] Unread count shown on bell icon badge (real-time via polling or Turbo Streams)
 
 ### Pre-Appointment Reminders UI
+- [x] **Reminders page** (`/reminders`): table of all upcoming appointments with status chips (Pending/Sent/Confirmed/Cancelled), sort, search, pagination
+- [x] **Auto-tracking**: ConfirmationLog created when appointment is booked (via WhatsApp or UI) so it appears immediately on reminders page
+- [x] **Manual actions**: Send WhatsApp, Call, Confirm, Cancel buttons per row
+- [x] **Status flow**: Pending → Sent (reminder dispatched) → Confirmed (patient confirmed) / No Answer / Cancelled
+- [x] **Window tabs**: Today / Tomorrow / This Week filter
+- [x] **Stat cards**: Total, Pending, Confirmed, Today
 - [ ] **Reminders tab** on Appointment detail page: show scheduled reminder status (24h sent ✓ / 1h sent ✓ / pending)
-- [ ] Manual "Send Reminder Now" button: triggers `AppointmentReminder24hJob` or `AppointmentReminder1hJob` for a single appointment
 - [ ] Reminder log: timestamp of each reminder sent, delivery status (sent/failed)
 
 ## Phase 9.7: Full Application Audit & Implementation Baseline
@@ -302,7 +307,7 @@ Do a full audit before changing behavior. This phase exists to make the remainin
 - [x] Capture baseline reproduction steps for the appointment/calendar visibility issue
 - [x] Record current N+1 hotspots, slow pages, and any known performance constraints before changing query behavior
 - [x] Summarize the smallest safe implementation plan for the next phases before touching production-facing flows
-- [ ] Create a conventional commit for the audit baseline before moving into bug-fix work
+- [x] Create a conventional commit for the audit baseline before moving into bug-fix work
 
 ## Phase 9.8: Patient Creation & Database Persistence Hardening
 
@@ -371,18 +376,10 @@ Remove the System Status feature completely from the dashboard and side navigati
 Establish a single source of truth for styling, consolidate reusable components, remove all inline styles, and bring every page and interactive flow up to production quality. Reference screenshots: clean teal/white/grey dental-clinic dashboards (DentaClinic / Dentlo / Zendenta style) — restrained palette, white surfaces, soft grey borders, a single accent colour used sparingly for CTAs and active states.
 
 ### Design tokens — single source of truth
-- [ ] Replace `theme.extend.colors.brand` in `tailwind.config.js` with a clean teal/white/grey palette:
-  - Primary (teal) — CTAs, active nav, links, focus rings
-  - Primary-dark — hover states only
-  - Surface — app background (near-white, very soft tint)
-  - White — cards, modals, table rows
-  - Ink — primary text (near-black, high contrast)
-  - Muted — secondary text, borders, helper copy
-  - Border — divider/border grey
-  - Success / Warning / Danger — reserved strictly for status
-- [ ] Expose the same tokens as CSS variables in `app/javascript/styles/application.css` (`:root { --color-primary: ... }`) so non-Tailwind surfaces (FullCalendar overrides, third-party widgets) share one source of truth
-- [ ] Remove old Phase 9.13 blue token block and the Phase 9.5 brown/taupe/gold backwards-compat aliases once nothing references them
-- [ ] Document the palette in a short comment block at the top of `tailwind.config.js`
+- [x] Replace `theme.extend.colors.brand` in `tailwind.config.js` with a clean teal/white/grey palette
+- [x] Expose the same tokens as CSS variables in `app/javascript/styles/application.css`
+- [x] Remove old Phase 9.13 blue token block and backwards-compat aliases
+- [x] Document the palette in a short comment block at the top of `tailwind.config.js`
 
 ### Zero inline styles audit
 - [ ] Grep the codebase for `style={{` and `style="` — eliminate every occurrence
@@ -423,12 +420,18 @@ Establish a single source of truth for styling, consolidate reusable components,
 - [ ] Verify drag-and-drop reschedule still works and writes through to the backend
 
 ### Production-readiness verification (end-to-end flows)
-- [ ] **Appointment create** → saves → appears immediately on the calendar and in the Appointments list; syncs to Google Calendar when configured
+- [x] **Appointment create** → saves → appears on calendar and list; syncs to Google Calendar when configured
+- [x] **WhatsApp booking** → local-first persistence (source of truth is DB, Google is best-effort)
+- [x] **WhatsApp honesty guard** → bot cannot claim a booking that didn't persist (response rewritten to fallback)
+- [x] **AI date normalization** → classifier prompt gets `today` so "Friday at 11am" resolves to ISO date
+- [x] **Calendar stability** → no more refresh loop (stable string key + skip-first-mount guard)
+- [x] **Cache invalidation** → `after_commit` on Appointment model busts all dashboard caches
+- [x] **Reminders page** → shows all upcoming appointments with status chips (Pending/Sent/Confirmed/Cancelled)
+- [x] **Auto-tracking** → ConfirmationLog created automatically when appointment is booked (WhatsApp or UI)
 - [ ] **Appointment edit/reschedule** → updates in list + calendar + Google
 - [ ] **Appointment cancel** → captures reason, updates status, removes from active calendar view, fires notification
 - [ ] **Patient create / edit** → validation errors surface inline; nested medical history persists
 - [ ] **Notifications** fire automatically on: new booking, cancellation, flagged patient, incoming WhatsApp message, confirmation failure — visible in the bell dropdown with unread count
-- [ ] **Reminders** (24h / 1h) send on schedule and update the reminder log on the appointment detail page
 - [ ] **Global search** returns patients, appointments, and conversations
 - [ ] Verify every page handles empty states, loading states, and server errors cleanly
 
