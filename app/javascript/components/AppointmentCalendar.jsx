@@ -18,7 +18,8 @@ const STATUS_COLORS = {
   completed:   { bg: '#E0E7FF', text: '#3730A3', border: '#C7D2FE', label: 'Completed',   dot: 'bg-brand-primary-dark' },
   cancelled:   { bg: '#FEE2E2', text: '#991B1B', border: '#FECACA', label: 'Cancelled',   dot: 'bg-brand-danger' },
   no_show:     { bg: '#F3F4F6', text: '#4B5563', border: '#E5E7EB', label: 'No show',     dot: 'bg-brand-muted' },
-  rescheduled: { bg: '#FEF3C7', text: '#92400E', border: '#FDE68A', label: 'Rescheduled', dot: 'bg-brand-warning' },
+  rescheduled:          { bg: '#FEF3C7', text: '#92400E', border: '#FDE68A', label: 'Rescheduled',          dot: 'bg-brand-warning' },
+  pending_confirmation: { bg: '#FFF7ED', text: '#9A3412', border: '#FED7AA', label: 'Pending Confirmation', dot: 'bg-orange-400' },
 }
 
 const formatClock = (date) =>

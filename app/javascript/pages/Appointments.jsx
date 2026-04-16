@@ -55,7 +55,8 @@ export default function Appointments({
     { value: 'completed',   label: t('status_completed') },
     { value: 'cancelled',   label: t('status_cancelled') },
     { value: 'no_show',     label: t('status_no_show') },
-    { value: 'rescheduled', label: t('status_rescheduled') },
+    { value: 'rescheduled',          label: t('status_rescheduled') },
+    { value: 'pending_confirmation', label: 'Pending Confirmation' },
   ]
 
   useEffect(() => {
@@ -225,6 +226,7 @@ export default function Appointments({
 
       {view === 'schedule' ? (
         <AppointmentCalendar
+          key={calendar_appointments.map(a => `${a.id}-${a.status}`).join(',')}
           appointments={calendar_appointments}
           calendarMeta={calendar_meta}
           onEventClick={handleEventClick}

@@ -13,7 +13,7 @@ class AiService
     "location" => "Dr Chalita le Roux Inc is at Unit 2, Amorosa Office Park, Corner of Doreen Road & Lawrence Rd, Amorosa, Johannesburg, 2040. From Hendrik Potgieter Rd: turn onto Doreen Rd, we are on your left-hand side at the second robot. From CR Swart Rd: turn onto Doreen Rd, we are on your right-hand side at the first robot. Free parking is available on the premises.",
     "parking" => "Free parking is available on the premises.",
     "services" => "We offer general dentistry, consultations, cleanings, fillings, extractions, root canals, crowns, bridges, and cosmetic treatments. A consultation is the best first step for any concern.",
-    "emergency" => "For dental emergencies, please call our office immediately. If after hours, leave a message and we'll get back to you first thing.",
+    "emergency" => "For dental emergencies, please contact Dr Chalita directly at 071 884 3204. If after hours, call that number and we'll assist you as quickly as possible.",
     "payment" => "We are a cash practice — we accept cash and card payments. We do not claim from medical aids directly. After payment we issue a statement for you to claim back from your medical aid."
   }.freeze
 
@@ -259,6 +259,11 @@ class AiService
       - Dental fear: Acknowledge the fear, reassure about modern techniques, mention the doctor's gentle approach
       - Timing: Offer flexible scheduling within Monday–Friday 8am–5pm. No weekend slots exist.
       - Always try to keep the conversation moving toward a booking
+
+      ## Emergency / Urgent
+      - If a patient reports pain, swelling, bleeding, or any dental emergency, immediately provide Dr Chalita's direct number: 071 884 3204
+      - Tell them to call that number right away for urgent assistance
+      - Do NOT try to book an appointment first for emergencies — give the number immediately
 
       ## Cancellation Rules
       - Always try to reschedule first before accepting a cancellation

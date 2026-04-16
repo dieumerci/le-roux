@@ -48,6 +48,7 @@ export default function CancelAppointmentModal({ appointment, open, onClose }) {
       { cancellation: { category, details } },
       {
         preserveScroll: true,
+        preserveState: false,
         onSuccess: () => {
           toast.success(t('cancel_success'))
           onClose?.()

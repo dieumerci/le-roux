@@ -115,6 +115,19 @@ class WhatsappService
             "'n ander tyd probeer, of bel die praktyk direk?"
   }.freeze
 
+  AFTER_HOURS_TODAY_BLOCKED = {
+    "en" => "Hi there! It's currently after hours, so we can't confirm " \
+            "an appointment for today. But you're welcome to book for " \
+            "another day — just let me know your preferred date and time, " \
+            "and we'll send you a confirmation first thing in the morning. 😊",
+    "af" => "Hallo! Dit is tans na-ure, so ons kan nie 'n afspraak vir " \
+            "vandag bevestig nie. Maar jy is welkom om vir 'n ander dag " \
+            "te bespreek — laat weet net jou voorkeur datum en tyd, " \
+            "en ons stuur 'n bevestiging vroeg oggend. 😊"
+  }.freeze
+
+  EMERGENCY_PHONE = "071 884 3204".freeze
+
   PRACTICE_ADDRESS = "Unit 2, Amorosa Office Park\nCorner of Doreen Road, Lawrence Rd\nAmorosa, Johannesburg, 2040".freeze
 
   PRACTICE_MAP_LINK = "https://www.google.com/maps/place/Dr+Chalita+Johnson+le+Roux/@-26.0958593,27.8679389,15z/data=!4m5!3m4!1s0x0:0x23a2741b6ea05a25!8m2!3d-26.0958593!4d27.8679389?shorturl=1".freeze
@@ -177,12 +190,19 @@ class WhatsappService
     # have the placeholder "WhatsApp Patient" name.
     update_patient_name(patient, entities[:name]) if entities[:name].present?
 
-    appointment = nil
+    booking_result = nil
     if date.present? && time.present?
-      appointment = attempt_booking(patient, date, time, entities[:treatment])
+      booking_result = attempt_booking(patient, date, time, entities[:treatment])
     end
 
-    return if appointment
+    # After-hours booking for today — blocked, rewrite response
+    if booking_result == :after_hours_today
+      lang = conversation&.language || "en"
+      result[:response] = AFTER_HOURS_TODAY_BLOCKED[lang] || AFTER_HOURS_TODAY_BLOCKED["en"]
+      return
+    end
+
+    return if booking_result.is_a?(Appointment)
 
     # We did NOT persist an Appointment — either because the classifier
     # didn't normalize the date/time (relative phrases like "Friday")
@@ -228,8 +248,14 @@ class WhatsappService
     end
 
     after_hours = !slot_within_working_hours?(start_time, end_time)
+    if after_hours && start_time.to_date == Date.current
+      # After hours + same day = blocked (can't confirm in time)
+      Rails.logger.info("[WhatsApp] Booking rejected: after hours for today (#{start_time})")
+      return :after_hours_today
+    end
+
     if after_hours
-      Rails.logger.info("[WhatsApp] Booking is after hours — allowing with notice (#{start_time})")
+      Rails.logger.info("[WhatsApp] After-hours booking for future date — pending confirmation (#{start_time})")
     end
 
     if slot_conflicts_locally?(start_time, end_time)
@@ -241,7 +267,7 @@ class WhatsappService
       start_time: start_time,
       end_time: end_time,
       reason: reason,
-      status: :scheduled
+      status: after_hours ? :pending_confirmation : :scheduled
     )
 
     # Create a confirmation log so the reminders page tracks this
@@ -417,7 +443,7 @@ class WhatsappService
     greeting  = time_greeting
 
     after_hours_notice = if after_hours
-      "\n\n⚠️ Please note: this appointment is outside our regular working hours. A reminder will be sent the day before your appointment."
+      "\n\n⏳ This booking was made after hours. We'll confirm your appointment first thing in the morning once we verify the slot is available."
     else
       ""
     end
@@ -564,7 +590,7 @@ class WhatsappService
     # Don't use for book/reschedule/cancel (need multi-turn with AI)
     if message.downcase.match?(/\b(pain|urgent|emergency|swollen|bleeding)\b/)
       return {
-        response: "I'm sorry you're dealing with that. If this is urgent, please call the practice directly now so we can assist you as quickly as possible.",
+        response: "I'm sorry you're dealing with that. If this is an emergency, please contact Dr Chalita directly at #{EMERGENCY_PHONE} so we can assist you as quickly as possible.",
         intent: "urgent",
         entities: {}
       }

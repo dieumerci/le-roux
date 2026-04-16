@@ -54,8 +54,10 @@ class ConfirmationService
   class SendError < StandardError; end
 
   # Entry point called by MorningConfirmationJob each morning.
-  # Processes all of today's unconfirmed (scheduled) appointments.
+  # First confirms after-hours bookings, then processes today's
+  # unconfirmed (scheduled) appointments.
   def run_daily_confirmations
+    confirm_after_hours_bookings
     appointments = todays_unconfirmed_appointments
 
     Rails.logger.info("[ConfirmationService] Processing #{appointments.count} appointments for #{Date.today}")
@@ -63,7 +65,96 @@ class ConfirmationService
     appointments.each { |appointment| process_appointment(appointment) }
   end
 
+  # Processes all pending_confirmation appointments (booked after hours).
+  # For each one: if the slot is still free, promote to scheduled and
+  # send a WhatsApp confirmation. If the slot now conflicts, cancel
+  # and notify the patient.
+  def confirm_after_hours_bookings
+    pending = Appointment
+      .pending_confirmation
+      .where("start_time > ?", Time.current)
+      .includes(:patient)
+      .order(:start_time)
+
+    Rails.logger.info("[ConfirmationService] Checking #{pending.count} after-hours booking(s)")
+
+    pending.each do |appointment|
+      if slot_available?(appointment)
+        appointment.update!(status: :scheduled)
+        send_after_hours_confirmed(appointment)
+        Rails.logger.info("[ConfirmationService] After-hours booking #{appointment.id} confirmed for #{appointment.start_time}")
+      else
+        appointment.update!(status: :cancelled)
+        send_after_hours_conflict(appointment)
+        Rails.logger.info("[ConfirmationService] After-hours booking #{appointment.id} cancelled — slot conflict")
+      end
+    rescue StandardError => e
+      Rails.logger.error("[ConfirmationService] After-hours booking #{appointment.id} failed: #{e.message}")
+    end
+  end
+
   private
+
+  # Checks whether the appointment's time slot has a conflict with
+  # any other non-cancelled, non-pending appointment.
+  def slot_available?(appointment)
+    !Appointment
+      .where.not(status: [:cancelled, :pending_confirmation])
+      .where.not(id: appointment.id)
+      .where("start_time < ? AND end_time > ?", appointment.end_time, appointment.start_time)
+      .exists?
+  end
+
+  def send_after_hours_confirmed(appointment)
+    patient = appointment.patient
+    day_name = appointment.start_time.strftime("%A")
+    date_str = appointment.start_time.strftime("%-d %B %Y")
+    time_str = appointment.start_time.strftime("%H:%M")
+
+    body = <<~MSG.strip
+      Good morning #{patient.first_name}! ☀️
+
+      Great news — your appointment has been confirmed:
+
+      #{day_name}
+      #{date_str}
+      #{time_str}
+
+      Please arrive 15 minutes early to complete your patient file.
+
+      📍 #{WhatsappService::PRACTICE_ADDRESS}
+
+      Map: #{WhatsappService::PRACTICE_MAP_LINK}
+
+      See you soon!
+      Dr Chalita & team 🌸🌿
+    MSG
+
+    WhatsappTemplateService.new.send_text(patient.phone, body)
+  rescue StandardError => e
+    Rails.logger.warn("[ConfirmationService] After-hours confirmation WhatsApp failed: #{e.message}")
+  end
+
+  def send_after_hours_conflict(appointment)
+    patient = appointment.patient
+    day_name = appointment.start_time.strftime("%A")
+    date_str = appointment.start_time.strftime("%-d %B %Y")
+    time_str = appointment.start_time.strftime("%H:%M")
+
+    body = <<~MSG.strip
+      Good morning #{patient.first_name},
+
+      Unfortunately, the time slot you requested (#{day_name} #{date_str} at #{time_str}) is no longer available.
+
+      Would you like to book a different time? Just send us your preferred day and time and we'll get you sorted. 😊
+
+      Dr Chalita & team
+    MSG
+
+    WhatsappTemplateService.new.send_text(patient.phone, body)
+  rescue StandardError => e
+    Rails.logger.warn("[ConfirmationService] After-hours conflict WhatsApp failed: #{e.message}")
+  end
 
   def todays_unconfirmed_appointments
     Appointment

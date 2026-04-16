@@ -9,7 +9,8 @@ class Appointment < ApplicationRecord
     completed: 2,
     cancelled: 3,
     no_show: 4,
-    rescheduled: 5
+    rescheduled: 5,
+    pending_confirmation: 6
   }
 
   validates :start_time, presence: true

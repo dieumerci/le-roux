@@ -102,7 +102,7 @@ export default function AppointmentFormModal({
 
     const opts = {
       preserveScroll: true,
-      preserveState: true,
+      preserveState: false,
       onSuccess: (page) => {
         const notice = page?.props?.flash?.notice
         toast.success(notice || (isEdit ? t('modal_success_update') : t('modal_success_create')))
