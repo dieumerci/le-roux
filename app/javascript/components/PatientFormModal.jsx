@@ -261,10 +261,10 @@ export default function PatientFormModal({
             <Field label="Emergency contact phone" error={errors.mh_emergency_contact_phone?.message}>
               <Input type="tel" placeholder="+27 82 123 4567" {...register('mh_emergency_contact_phone')} />
             </Field>
-            <Field label="Insurance provider">
+            <Field label="Medical aid provider (for claim-back)">
               <Input {...register('mh_insurance_provider')} />
             </Field>
-            <Field label="Policy number">
+            <Field label="Medical aid policy number">
               <Input {...register('mh_insurance_policy_number')} />
             </Field>
             <Field label="Last dental visit">

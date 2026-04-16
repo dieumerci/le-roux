@@ -1,6 +1,9 @@
 # Dr Chalita le Roux AI Receptionist
 
-A production-grade AI receptionist system for **Dr Chalita le Roux Inc** (dental practice in Pretoria, South Africa). Handles WhatsApp conversations, inbound/outbound voice calls, appointment booking, morning confirmations, cancellation recovery, and a full reception dashboard — all focused on maximising patient bookings and reducing no-shows.
+A production-grade AI receptionist system for **Dr Chalita le Roux Inc** (dental practice in Johannesburg, South Africa). Handles WhatsApp conversations, inbound/outbound voice calls, appointment booking, morning confirmations, cancellation recovery, and a full reception dashboard — all focused on maximising patient bookings and reducing no-shows.
+
+**Practice Location**: Unit 2, Amorosa Office Park, Corner of Doreen Road, Lawrence Rd, Amorosa, Johannesburg, 2040
+[View on Google Maps](https://www.google.com/maps/place/Dr+Chalita+Johnson+le+Roux/@-26.0958593,27.8679389,15z)
 
 ---
 
@@ -50,6 +53,8 @@ A production-grade AI receptionist system for **Dr Chalita le Roux Inc** (dental
 - **Analytics** — Booking stats, cancellation breakdown, channel performance
 - **Global search** — Find patients, appointments, and conversations from the navbar
 - **Morning confirmations** — Automated batch calls + WhatsApp fallback for same-day appointments
+- **Multi-channel notifications** — Email, SMS, and WhatsApp confirmations and reminders
+- **Settings page** — Tabbed interface with practice info, office hours, notification channels, and appearance preferences
 
 ---
 
@@ -249,8 +254,9 @@ Bot:     "Your appointment has been cancelled. Could I ask what prompted
           the change? This helps us improve."
 
 Patient: "It's too expensive"
-Bot:     "I understand. Our consultation is R850 and includes x-rays —
-          it's a thorough assessment. We also accept medical aid.
+Bot:     "I understand. Our consultation is from ±R850 and includes x-rays —
+          it's a thorough assessment. We issue a statement after payment
+          that you can use to claim back from your medical aid.
           Would you like to reconsider?"
 ```
 

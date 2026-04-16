@@ -161,7 +161,7 @@ function MedicalHistoryPanel({ mh, onEdit }) {
       {isEmpty ? (
         <p className="text-sm text-gray-400">
           No medical records on file yet. Click "Add records" to capture allergies,
-          medications, insurance, and emergency contact details.
+          medications, medical aid details, and emergency contact details.
         </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -193,7 +193,7 @@ function MedicalHistoryPanel({ mh, onEdit }) {
               <div className="flex items-center gap-1.5 mb-1">
                 <Shield size={12} className="text-gray-400" />
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                  Insurance
+                  Medical Aid (claim-back)
                 </p>
               </div>
               <p className="text-sm text-gray-800">{mh.insurance_provider || '—'}</p>

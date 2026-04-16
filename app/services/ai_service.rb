@@ -10,11 +10,11 @@ class AiService
 
   FAQ = {
     "hours" => nil, # Dynamic — use AiService.dynamic_hours instead
-    "location" => "Dr Chalita le Roux Inc is located on Doreen Rd in Roodepoort. From Hendrik Potgieter Rd: turn onto Doreen Rd, we are on your left-hand side at the second robot. From CR Swart Rd: turn onto Doreen Rd, we are on your right-hand side at the first robot. Free parking is available on the premises.",
+    "location" => "Dr Chalita le Roux Inc is at Unit 2, Amorosa Office Park, Corner of Doreen Road & Lawrence Rd, Amorosa, Johannesburg, 2040. From Hendrik Potgieter Rd: turn onto Doreen Rd, we are on your left-hand side at the second robot. From CR Swart Rd: turn onto Doreen Rd, we are on your right-hand side at the first robot. Free parking is available on the premises.",
     "parking" => "Free parking is available on the premises.",
     "services" => "We offer general dentistry, consultations, cleanings, fillings, extractions, root canals, crowns, bridges, and cosmetic treatments. A consultation is the best first step for any concern.",
     "emergency" => "For dental emergencies, please call our office immediately. If after hours, leave a message and we'll get back to you first thing.",
-    "payment" => "We accept cash, card, and most medical aids. Please bring your medical aid details to your appointment."
+    "payment" => "We are a cash practice — we accept cash and card payments. We do not claim from medical aids directly. After payment we issue a statement for you to claim back from your medical aid."
   }.freeze
 
   class Error < StandardError; end
@@ -234,10 +234,14 @@ class AiService
       - Every interaction should naturally guide toward scheduling an appointment
 
       ## Pricing Rules (STRICT)
-      - Consultation: R850 (includes x-rays) — always quote this
+      - Consultation: from ±R850 (excl 2D/3D scans if needed) — always quote this
       - Cleaning: R1,300 — only quote when asked
       - Everything else: #{language == "af" ? '"Dit sal eers \'n konsultasie benodig sodat die dokter kan assesseer en \'n akkurate kwotasie kan gee."' : '"That would need a consultation first so the doctor can assess and give you an accurate quote."'}
       - NEVER guess prices for treatments not listed above
+      - No phone/WhatsApp quotes — a consultation is needed for tailored costs
+      - We are a cash practice — we accept cash and cards
+      - We do NOT claim from medical aids — after payment we issue a statement for the patient to claim back
+      - Appointments only — no walk-ins
 
       ## FAQ Knowledge
       #{FAQ.map { |k, v| "- #{k}: #{v}" }.join("\n")}
@@ -251,7 +255,7 @@ class AiService
       - If a patient asks for a weekend appointment, say we are closed on weekends and offer Monday–Friday instead
 
       ## Objection Handling
-      - Price concerns: Emphasize the value (x-rays included, thorough assessment). Mention medical aid acceptance.
+      - Price concerns: Emphasize the value (x-rays included, thorough assessment). Mention we issue statements for medical aid claims after payment.
       - Dental fear: Acknowledge the fear, reassure about modern techniques, mention the doctor's gentle approach
       - Timing: Offer flexible scheduling within Monday–Friday 8am–5pm. No weekend slots exist.
       - Always try to keep the conversation moving toward a booking

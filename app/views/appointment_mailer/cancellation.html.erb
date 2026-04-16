@@ -1,0 +1,31 @@
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; padding: 20px 0; border-bottom: 2px solid #b8860b;">
+    <h1 style="color: #5a3e2b; margin: 0; font-size: 22px;">Dr Chalita le Roux Inc</h1>
+    <p style="color: #8b7355; margin: 4px 0 0; font-size: 13px;">Dental Practice</p>
+  </div>
+
+  <div style="padding: 30px 0;">
+    <p style="color: #333; font-size: 15px; margin: 0 0 20px;">
+      Dear <%= @patient.first_name %>,
+    </p>
+
+    <p style="color: #333; font-size: 15px; margin: 0 0 20px;">
+      Your appointment on <strong><%= @appointment.start_time.strftime("%A, %-d %B %Y at %H:%M") %></strong> has been cancelled.
+    </p>
+
+    <p style="color: #555; font-size: 14px; margin: 0 0 20px;">
+      If you'd like to rebook, please contact us via WhatsApp or reply to this email. We're happy to find a time that works for you.
+    </p>
+
+    <p style="color: #333; font-size: 15px; margin: 20px 0 0;">
+      Kind regards,<br>
+      <strong>Dr Chalita & team</strong>
+    </p>
+  </div>
+
+  <div style="border-top: 1px solid #e5e5e5; padding: 16px 0; text-align: center;">
+    <p style="color: #999; font-size: 11px; margin: 0;">
+      Dr Chalita le Roux Inc &middot; Amorosa Office Park, Doreen Rd, Johannesburg
+    </p>
+  </div>
+</div>

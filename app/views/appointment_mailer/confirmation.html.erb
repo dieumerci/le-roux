@@ -1,0 +1,64 @@
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; padding: 20px 0; border-bottom: 2px solid #b8860b;">
+    <h1 style="color: #5a3e2b; margin: 0; font-size: 22px;">Dr Chalita le Roux Inc</h1>
+    <p style="color: #8b7355; margin: 4px 0 0; font-size: 13px;">Dental Practice</p>
+  </div>
+
+  <div style="padding: 30px 0;">
+    <p style="color: #333; font-size: 15px; margin: 0 0 20px;">
+      Dear <%= @patient.first_name %>,
+    </p>
+
+    <p style="color: #333; font-size: 15px; margin: 0 0 20px;">
+      Your appointment has been confirmed:
+    </p>
+
+    <div style="background: #faf8f5; border-radius: 8px; padding: 20px; margin: 0 0 20px;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 6px 0; color: #8b7355; font-size: 13px; width: 100px;">Date</td>
+          <td style="padding: 6px 0; color: #333; font-size: 15px; font-weight: 600;"><%= @appointment.start_time.strftime("%A, %-d %B %Y") %></td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #8b7355; font-size: 13px;">Time</td>
+          <td style="padding: 6px 0; color: #333; font-size: 15px; font-weight: 600;"><%= @appointment.start_time.strftime("%H:%M") %></td>
+        </tr>
+        <% if @appointment.reason.present? %>
+        <tr>
+          <td style="padding: 6px 0; color: #8b7355; font-size: 13px;">Reason</td>
+          <td style="padding: 6px 0; color: #333; font-size: 15px;"><%= @appointment.reason %></td>
+        </tr>
+        <% end %>
+      </table>
+    </div>
+
+    <p style="color: #333; font-size: 14px; margin: 0 0 10px;">
+      <strong>Please arrive at <%= (@appointment.start_time - 15.minutes).strftime("%H:%M") %></strong> to open a new patient file.
+    </p>
+
+    <div style="background: #f0f7ff; border-radius: 8px; padding: 16px; margin: 20px 0;">
+      <p style="color: #333; font-size: 13px; margin: 0 0 8px; font-weight: 600;">Practice Location</p>
+      <p style="color: #555; font-size: 13px; margin: 0 0 4px;">Unit 2, Amorosa Office Park</p>
+      <p style="color: #555; font-size: 13px; margin: 0 0 4px;">Corner of Doreen Road, Lawrence Rd</p>
+      <p style="color: #555; font-size: 13px; margin: 0 0 12px;">Amorosa, Johannesburg, 2040</p>
+      <a href="https://www.google.com/maps/place/Dr+Chalita+Johnson+le+Roux/@-26.0958593,27.8679389,15z" style="color: #b8860b; font-size: 13px;">View on Google Maps</a>
+    </div>
+
+    <div style="background: #fff9f0; border-radius: 8px; padding: 16px; margin: 20px 0; border-left: 3px solid #b8860b;">
+      <p style="color: #333; font-size: 13px; margin: 0;">
+        <strong>Payment:</strong> We are a cash practice. We accept cash and card payments. After payment we issue a statement for medical aid claims.
+      </p>
+    </div>
+
+    <p style="color: #333; font-size: 15px; margin: 20px 0 0;">
+      Looking forward to seeing you,<br>
+      <strong>Dr Chalita & team</strong>
+    </p>
+  </div>
+
+  <div style="border-top: 1px solid #e5e5e5; padding: 16px 0; text-align: center;">
+    <p style="color: #999; font-size: 11px; margin: 0;">
+      Dr Chalita le Roux Inc &middot; Amorosa Office Park, Doreen Rd, Johannesburg
+    </p>
+  </div>
+</div>

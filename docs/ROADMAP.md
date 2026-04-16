@@ -841,6 +841,68 @@ The dashboard should be useful from day one, not just for future conversations. 
 - [ ] Deploy and smoke test all channels
 - [ ] Monitor logs, error tracking, and uptime
 
+## Phase 15: Multi-Channel Notifications & Settings Redesign ✅ COMPLETE
+
+### 15.1: Booking Confirmation with Location
+- [x] Update WhatsApp booking confirmation to include full practice address
+- [x] Include Google Maps link in confirmation message
+- [x] Address: Unit 2, Amorosa Office Park, Corner of Doreen Road, Lawrence Rd, Amorosa, Johannesburg, 2040
+- [x] Map: https://www.google.com/maps/place/Dr+Chalita+Johnson+le+Roux/
+- [x] Include driving directions from Hendrik Potgieter Rd and CR Swart Rd
+
+### 15.2: Insurance/Medical Aid Policy Update
+- [x] Practice is a CASH practice — does not claim from medical aids directly
+- [x] After payment, a statement is issued for the patient to claim back
+- [x] Update AI system prompt with correct payment policy
+- [x] Update FAQ payment entry
+- [x] Remove "medical aid acceptance" from objection handling
+- [x] Update patient form labels (Insurance → Medical Aid for claim-back)
+- [x] No phone/WhatsApp quotes — consultation needed for tailored costs
+- [x] Appointments only — no walk-ins
+
+### 15.3: Email Confirmations & Reminders
+- [x] Create AppointmentMailer with confirmation, reminder, and cancellation emails
+- [x] Branded HTML email templates with practice details and map link
+- [x] Email sent on booking (WhatsApp + dashboard), cancellation, and 24h reminder
+- [x] Graceful fallback — email failures don't block primary flow
+
+### 15.4: SMS Confirmations & Reminders
+- [x] Create SmsService using Twilio SMS API
+- [x] SMS confirmation on booking with practice address and map link
+- [x] SMS reminder 24h before appointment asking patient to confirm
+- [x] SMS cancellation notification
+- [x] Graceful fallback — SMS failures don't block primary flow
+
+### 15.5: WhatsApp 24h Reminder with Confirmation Request
+- [x] Updated 24h reminder to send free-form message asking patient to confirm
+- [x] Message includes: appointment details, YES/NO reply options, reschedule option
+- [x] Creates confirmation log entry for tracking
+
+### 15.6: Availability Enforcement
+- [x] Added model-level validation for slot conflicts (no_overlapping_appointments)
+- [x] Added model-level validation for working hours (within_working_hours)
+- [x] Both validations on :create scope — applies to dashboard and WhatsApp booking
+- [x] Cancelled appointments immediately free up slots for rebooking (excluded from conflict check)
+
+### 15.7: Notification Ping Sound
+- [x] Web Audio API ping sound plays when new notifications arrive
+- [x] 30-second polling for notification count changes
+- [x] Two-tone ascending ping (A5 → D6) with fade
+
+### 15.8: Sidebar/Navbar Alignment Fix
+- [x] Fixed navbar to span full width with inset-x-0 and pl-64
+- [x] Border-bottom now runs seamlessly from edge to edge
+- [x] Sidebar at z-30 overlays correctly
+
+### 15.9: Settings Page Redesign
+- [x] Tabbed interface: Practice Info, Office Hours, Notifications, Appearance
+- [x] Practice tab: name, address, phone, email, map link, pricing with cash practice note
+- [x] Hours tab: schedule table with status badges
+- [x] Notifications tab: channel status (WhatsApp, Email, SMS) with confirmation/reminder indicators
+- [x] Appearance tab: language toggle (EN/AF)
+- [x] Full EN/AF translation support
+- [x] Production-ready card-based design
+
 ## Phase 17: Enhancements (Future)
 - [ ] Website "Book Appointment" button → WhatsApp flow
 - [ ] Google Business Profile booking integration

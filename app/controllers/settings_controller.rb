@@ -14,7 +14,25 @@ class SettingsController < ApplicationController
             active: s.active
           }
         },
-        pricing: AiService::PRICING
+        pricing: AiService::PRICING,
+        practice: {
+          name: "Dr Chalita le Roux Inc",
+          address: "Unit 2, Amorosa Office Park",
+          address_line2: "Corner of Doreen Road, Lawrence Rd",
+          city: "Amorosa, Johannesburg, 2040",
+          phone: ENV.fetch("TWILIO_WHATSAPP_NUMBER", "+27 XX XXX XXXX"),
+          email: ENV.fetch("MAILER_FROM_ADDRESS", "reception@drchalitaleroux.co.za"),
+          map_link: WhatsappService::PRACTICE_MAP_LINK
+        },
+        notifications: {
+          email_confirmations: true,
+          email_reminders: true,
+          sms_confirmations: ENV["TWILIO_SMS_NUMBER"].present?,
+          sms_reminders: ENV["TWILIO_SMS_NUMBER"].present?,
+          whatsapp_confirmations: true,
+          whatsapp_reminders: true,
+          reminder_hours_before: 24
+        }
       }
     end
 

@@ -113,7 +113,7 @@ export default function DashboardLayout({ children }) {
       </aside>
 
       {/* ── Top navbar ──────────────────────────────────────────────── */}
-      <header className="fixed left-64 right-0 top-0 z-20 flex h-16 items-center gap-4 border-b border-brand-border bg-white px-6">
+      <header className="fixed inset-x-0 top-0 z-20 flex h-16 items-center gap-4 border-b border-brand-border bg-white pl-64 pr-6">
 
         {/* Left spacer — keeps the search visually centered */}
         <div className="flex-1" />

@@ -121,6 +121,8 @@ class AppointmentsController < ApplicationController
         flagged: false
       )
       NotificationService.appointment_created(appointment)
+      AppointmentMailer.confirmation(appointment).deliver_later
+      SmsService.send_confirmation(appointment) rescue nil
     end
     expire_appointment_caches!
 
@@ -224,6 +226,8 @@ class AppointmentsController < ApplicationController
     end
 
     NotificationService.appointment_cancelled(appointment, reason: cancel_params[:category])
+    AppointmentMailer.cancellation(appointment).deliver_later
+    SmsService.send_cancellation(appointment) rescue nil
     expire_appointment_caches!
 
     redirect_back fallback_location: appointments_path,

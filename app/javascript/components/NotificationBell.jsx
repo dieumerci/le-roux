@@ -19,6 +19,27 @@ import {
 //   - Click → navigate (via Inertia) AND mark read in the background
 //   - "Mark all as read" → POST /notifications/mark_all_read
 
+// Plays a short ping sound using the Web Audio API.
+// No external audio file needed — synthesized on the fly.
+function playNotificationPing() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(880, ctx.currentTime)       // A5
+    osc.frequency.setValueAtTime(1174.66, ctx.currentTime + 0.08) // D6
+    gain.gain.setValueAtTime(0.3, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3)
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.3)
+  } catch {
+    // Silent fail — audio may be blocked by browser policy
+  }
+}
+
 const ICONS = {
   appointment_created:     Calendar,
   appointment_cancelled:   CalendarX,
@@ -53,9 +74,37 @@ export default function NotificationBell() {
 
   const containerRef = useRef(null)
 
+  // Track the previous unread count to detect new notifications.
+  const prevCountRef = useRef(unreadCount)
+
   // Keep the local override in sync when the shared prop changes
   // (i.e. after an Inertia navigation refreshes the count).
   useEffect(() => { setLocalUnread(null) }, [sharedUnread])
+
+  // Play ping when unread count increases (new notification arrived).
+  useEffect(() => {
+    if (unreadCount > prevCountRef.current) {
+      playNotificationPing()
+    }
+    prevCountRef.current = unreadCount
+  }, [unreadCount])
+
+  // Poll for new notifications every 30 seconds so the badge
+  // updates without requiring a page navigation.
+  useEffect(() => {
+    const poll = setInterval(async () => {
+      try {
+        const res = await fetch('/notifications?count_only=1', {
+          headers: { Accept: 'application/json' },
+        })
+        const data = await res.json()
+        if (typeof data.unread_count === 'number') {
+          setLocalUnread(data.unread_count)
+        }
+      } catch { /* silent */ }
+    }, 30000)
+    return () => clearInterval(poll)
+  }, [])
 
   // Close on outside click.
   useEffect(() => {

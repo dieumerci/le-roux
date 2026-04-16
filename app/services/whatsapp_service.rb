@@ -115,6 +115,10 @@ class WhatsappService
             "'n ander tyd probeer, of bel die praktyk direk?"
   }.freeze
 
+  PRACTICE_ADDRESS = "Unit 2, Amorosa Office Park\nCorner of Doreen Road, Lawrence Rd\nAmorosa, Johannesburg, 2040".freeze
+
+  PRACTICE_MAP_LINK = "https://www.google.com/maps/place/Dr+Chalita+Johnson+le+Roux/@-26.0958593,27.8679389,15z/data=!4m5!3m4!1s0x0:0x23a2741b6ea05a25!8m2!3d-26.0958593!4d27.8679389?shorturl=1".freeze
+
   PRACTICE_DIRECTIONS = <<~DIRS.strip
     Directions from Hendrik Potgieter Rd:
     Turn onto Doreen Rd,
@@ -252,6 +256,8 @@ class WhatsappService
 
     sync_to_google_calendar(appointment, patient, reason)
     send_confirmation_template(patient, appointment)
+    send_confirmation_email(appointment)
+    send_confirmation_sms(appointment)
     appointment
   rescue StandardError => e
     Rails.logger.error("[WhatsApp] Booking failed: #{e.class}: #{e.message}")
@@ -421,11 +427,14 @@ class WhatsappService
 
       Please arrive at #{arrive_at} to open a new patient file.
 
-      Looking forward to seeing you,
-      Dr Chalita & team
-      🌸🌿
+      📍 #{PRACTICE_ADDRESS}
 
       #{PRACTICE_DIRECTIONS}
+
+      Map: #{PRACTICE_MAP_LINK}
+
+      Looking forward to seeing you,
+      Dr Chalita & team 🌸🌿
     MSG
 
     template_service&.send_text(patient.phone, body)
@@ -452,6 +461,18 @@ class WhatsappService
     template_service&.send_cancellation(patient, appointment)
   rescue WhatsappTemplateService::Error => e
     Rails.logger.warn("[WhatsApp] Template send failed: #{e.message}")
+  end
+
+  def send_confirmation_email(appointment)
+    AppointmentMailer.confirmation(appointment).deliver_later
+  rescue StandardError => e
+    Rails.logger.warn("[WhatsApp] Confirmation email failed: #{e.message}")
+  end
+
+  def send_confirmation_sms(appointment)
+    SmsService.send_confirmation(appointment)
+  rescue StandardError => e
+    Rails.logger.warn("[WhatsApp] Confirmation SMS failed: #{e.message}")
   end
 
   def send_flagged_alert(patient, reason)

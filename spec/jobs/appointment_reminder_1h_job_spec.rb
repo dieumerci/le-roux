@@ -106,15 +106,15 @@ RSpec.describe AppointmentReminder1hJob, type: :job do
         create(:appointment,
           patient:    patient,
           start_time: 50.minutes.from_now,
-          end_time:   80.minutes.from_now,
+          end_time:   50.minutes.from_now + 25.minutes,
           status:     :scheduled
         )
       end
       let!(:appt2) do
         create(:appointment,
           patient:    patient2,
-          start_time: 65.minutes.from_now,
-          end_time:   95.minutes.from_now,
+          start_time: 50.minutes.from_now + 25.minutes,
+          end_time:   50.minutes.from_now + 55.minutes,
           status:     :scheduled
         )
       end
