@@ -435,8 +435,6 @@ class WhatsappService
 
       📍 #{PRACTICE_ADDRESS}
 
-      #{PRACTICE_DIRECTIONS}
-
       Map: #{PRACTICE_MAP_LINK}
 
       Looking forward to seeing you,
