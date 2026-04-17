@@ -41,7 +41,7 @@ gem "google-apis-calendar_v3"
 gem "googleauth"
 
 # === AI / LLM - Natural language understanding ===
-gem "anthropic", "~> 0.3"
+gem "anthropic", "~> 1.35"
 
 # === Zip file processing (WhatsApp bulk import) ===
 gem "rubyzip", "~> 2.3", require: "zip"
