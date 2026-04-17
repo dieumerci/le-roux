@@ -3,7 +3,12 @@ module Webhooks
     before_action :validate_twilio_signature
 
     # POST /webhooks/whatsapp
-    # Receives incoming WhatsApp messages from Twilio
+    # Receives incoming WhatsApp messages from Twilio.
+    #
+    # We respond with an empty TwiML immediately so Twilio doesn't
+    # time out (the AI + remote DB can take 10+ seconds). The actual
+    # reply is sent asynchronously via WhatsAppReplyJob which calls
+    # the Twilio Messages API directly.
     def incoming
       sender = params["From"]&.gsub("whatsapp:", "")
       body = params["Body"]&.strip
@@ -14,19 +19,20 @@ module Webhooks
         return
       end
 
-      # Use button payload as the message if it's a quick reply tap
       message = button_payload.presence || body
 
-      result = WhatsappService.new.handle_incoming(
+      # Enqueue async processing — reply comes via Twilio REST API
+      WhatsappReplyJob.perform_later(
         from: sender,
         message: message,
         twilio_params: params.permit!.to_h
       )
 
-      respond_with_twiml(result[:response])
+      # Return empty TwiML immediately so Twilio doesn't retry
+      respond_with_empty_twiml
     rescue StandardError => e
       Rails.logger.error("[WhatsApp Webhook] Error: #{e.message}\n#{e.backtrace.first(5).join("\n")}")
-      respond_with_twiml("I'm sorry, something went wrong on our end. Please try again or call us directly.")
+      respond_with_empty_twiml
     end
 
     private
@@ -44,11 +50,8 @@ module Webhooks
       end
     end
 
-    def respond_with_twiml(message)
-      twiml = Twilio::TwiML::MessagingResponse.new do |r|
-        r.message(body: message)
-      end
-
+    def respond_with_empty_twiml
+      twiml = Twilio::TwiML::MessagingResponse.new
       render xml: twiml.to_xml, content_type: "text/xml"
     end
   end

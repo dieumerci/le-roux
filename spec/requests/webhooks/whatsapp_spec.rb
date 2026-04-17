@@ -25,32 +25,20 @@ RSpec.describe "Webhooks::Whatsapp", type: :request do
       }
     end
 
-    it "returns 200 with TwiML response" do
+    it "returns 200 with empty TwiML response" do
       post "/webhooks/whatsapp", params: valid_params
 
       expect(response).to have_http_status(:ok)
       expect(response.content_type).to include("text/xml")
-      expect(response.body).to include("<Response>")
-      expect(response.body).to include("<Message>")
+      expect(response.body).to include("<Response")
+      # Response is empty TwiML — actual reply sent async via job
+      expect(response.body).not_to include("<Message>")
     end
 
-    it "creates a patient from the incoming number" do
+    it "enqueues a WhatsappReplyJob" do
       expect {
         post "/webhooks/whatsapp", params: valid_params
-      }.to change(Patient, :count).by(1)
-
-      patient = Patient.last
-      expect(patient.phone).to eq("+27612345678")
-    end
-
-    it "creates a conversation" do
-      expect {
-        post "/webhooks/whatsapp", params: valid_params
-      }.to change(Conversation, :count).by(1)
-
-      conversation = Conversation.last
-      expect(conversation.channel).to eq("whatsapp")
-      expect(conversation.status).to eq("active")
+      }.to have_enqueued_job(WhatsappReplyJob)
     end
 
     it "returns bad request when From is missing" do
@@ -70,22 +58,16 @@ RSpec.describe "Webhooks::Whatsapp", type: :request do
       expect(response).to have_http_status(:ok)
     end
 
-    it "includes the AI response in the TwiML" do
-      post "/webhooks/whatsapp", params: valid_params
-
-      expect(response.body).to include("How can I help you today?")
-    end
-
     context "when an error occurs" do
       before do
-        allow(ai_service).to receive(:process_message).and_raise(StandardError, "Something broke")
+        allow(WhatsappReplyJob).to receive(:perform_later).and_raise(StandardError, "Something broke")
       end
 
-      it "returns a friendly error message" do
+      it "still returns 200 with empty TwiML" do
         post "/webhooks/whatsapp", params: valid_params
 
-        expect(response).to have_http_status(:ok) # Still OK — TwiML response
-        expect(response.body).to include("something went wrong")
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include("<Response")
       end
     end
   end
