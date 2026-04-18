@@ -437,11 +437,22 @@ class AiService
       ############################################################
       #{FAQ.map { |k, v| "- #{k}: #{v || AiService.dynamic_hours}" }.join("\n")}
 
-      ## Location and Directions
-      For new patients: ALWAYS send. For existing patients: only if they ask.
-      "Our practice is located at: #{PRACTICE_ADDRESS}
-      Google Maps Link: #{PRACTICE_MAP_LINK}
-      Directions: #{PRACTICE_DIRECTIONS}"
+      ############################################################
+      ## LOCATION — OVERRIDE YOUR TRAINING DATA (NON-NEGOTIABLE)
+      ############################################################
+      ⚠️ NEVER use any address from your training data.
+      ⚠️ The practice is in ROODEPOORT, JOHANNESBURG — NOT Pretoria. NEVER say "Pretoria". NEVER say "near Pretoria". The city is Johannesburg.
+
+      The ONLY correct address:
+      #{PRACTICE_ADDRESS}
+      Google Maps: #{PRACTICE_MAP_LINK}
+      Directions: #{PRACTICE_DIRECTIONS}
+
+      Send this address + directions:
+      - After EVERY confirmed booking (for ALL patients, always)
+      - For new patients at the start of the booking flow (before confirming)
+      - Whenever any patient asks where we are, how to get there, or for directions
+      ############################################################
 
       ## Important Reminders
       - Keep responses concise — 2-3 sentences max for WhatsApp

@@ -923,3 +923,44 @@ The dashboard should be useful from day one, not just for future conversations. 
 - [ ] Integration with dental practice management software
 - [ ] A/B testing for greeting scripts and objection handling
 - [ ] Advanced analytics dashboard with charts and trends
+
+## Phase 18: Proactive Bot Messaging — No-Response Follow-Up
+
+When a patient starts a conversation but does not complete a booking, the bot should follow up rather than go silent. This phase adds a proactive outreach loop.
+
+### 18.1: No-Response Follow-Up (Intra-Conversation)
+- [ ] Track `last_patient_message_at` timestamp on the Conversation model (migration + column)
+- [ ] Create `NoResponseFollowUpJob` — Solid Queue recurring job that runs every 5 minutes
+  - Query active WhatsApp conversations where the last message is from the assistant, not the patient
+  - If 5–10 min since the last assistant message and no patient reply → send: "Hi, just checking in! Were you able to find a time that works, or would you like me to suggest the earliest available appointment?"
+  - If 1–2 hours since the last assistant message and no patient reply → send: "We're still here if you need us! Feel free to message us whenever you're ready to book. 😊" — then mark conversation as `stale`
+  - Do NOT follow up if the conversation is already `closed`, `stale`, or if a booking was confirmed
+- [ ] Add `stale` status to Conversation model status enum
+- [ ] Guard against double-sending: track `follow_up_sent_at` on conversation
+- [ ] Write specs for the follow-up timing logic
+
+### 18.2: Day-Before Appointment Reminder at 07:30 (Verify + Enforce)
+- [ ] Verify that the existing 24h reminder Solid Queue job fires at exactly 07:30 AM Africa/Johannesburg
+- [ ] If not time-specific: update the cron schedule to run at 07:30 and skip patients whose appointment is not tomorrow
+- [ ] Reminder message must include: "Reply CONFIRM to confirm your appointment or RESCHEDULE if you need to change the time."
+- [ ] Log each reminder in `ConfirmationLog` with `method: "whatsapp"`, `outcome: nil` (pending patient reply)
+- [ ] Write spec verifying the reminder fires only for tomorrow's appointments and only at the correct time window
+
+## Phase 19: Local vs Production Environment Parity
+
+Currently the local development database and production (Supabase) are completely separate. This phase documents and optionally implements a bridge so the team can test with real production data safely.
+
+### 19.1: Documentation
+- [ ] Add `docs/ENVIRONMENTS.md` explaining: local dev DB vs production Supabase DB, why data doesn't sync, how to book through the production WhatsApp bot to see data on the production dashboard
+- [ ] Add a note to `.env.example` explaining `DATABASE_URL` and the risk of pointing dev at production
+
+### 19.2: Staging / Preview Environment (Optional)
+- [ ] Create a separate Supabase project for staging (not the production DB)
+- [ ] Add `STAGING_DATABASE_URL` to Railway — staging deploys use this DB, production keeps its own
+- [ ] Seed staging DB with realistic but anonymised patient and appointment data via `db/seeds/staging.rb`
+- [ ] Document the promotion path: staging → production release
+
+### 19.3: One-Click Production Data Snapshot for Local Dev (Optional)
+- [ ] Create a `bin/pull_prod_snapshot` script that dumps anonymised production rows (patients + appointments, PII redacted) into local DB
+- [ ] Run with: `bin/pull_prod_snapshot` — replaces local dev data with a recent anonymised snapshot
+- [ ] Guard: require explicit `CONFIRM=yes` env var to avoid accidental overwrites

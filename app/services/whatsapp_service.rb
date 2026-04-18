@@ -474,7 +474,9 @@ class WhatsappService
       Your appointment is booked for #{day_name}, #{date_str} at #{time_str}.#{after_hours_notice}
 
       #{PRACTICE_ADDRESS}
-      Google Maps Link: #{PRACTICE_MAP_LINK}#{new_patient_addon}
+      Google Maps: #{PRACTICE_MAP_LINK}
+
+      Directions: #{PRACTICE_DIRECTIONS}#{new_patient_addon}
 
       If you need to change anything, just reply here.
     MSG
