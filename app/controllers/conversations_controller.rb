@@ -22,25 +22,25 @@ class ConversationsController < ApplicationController
 
   # POST /conversations/import
   #
-  # Phase 10 — historical WhatsApp chat import. Accepts a multipart
-  # file upload (.json, .txt, or .zip containing .txt/.json files)
-  # and delegates to WhatsappImportService. The import is idempotent
-  # via external_id so re-uploading the same file updates existing
-  # rows instead of creating duplicates.
+  # Accepts a multipart file upload (.json, .txt, or .zip) and ingests
+  # historical WhatsApp conversations. Files under 1 MB are processed
+  # inline and redirect immediately with results. Files ≥ 1 MB are
+  # saved to tmp/imports/ and queued as a BulkWhatsappImportJob; a
+  # dashboard notification appears when the job completes.
+  INLINE_IMPORT_THRESHOLD = 1.megabyte
+
   def import
     file = params[:file]
     return redirect_to(conversations_path, alert: "Please choose a file to import.", status: :see_other) if file.blank?
 
-    result = WhatsappImportService.import_upload(
-      file,
-      owner_name:    params[:owner_name].presence,
-      patient_phone: params[:patient_phone].presence
-    )
+    owner_name    = params[:owner_name].presence
+    patient_phone = params[:patient_phone].presence
 
-    notice = "Import complete — #{result.created} created, #{result.updated} updated"
-    notice += ", #{result.skipped} skipped" if result.skipped.positive?
-    expire_conversation_caches!
-    redirect_to conversations_path, notice: notice, status: :see_other
+    if file.size >= INLINE_IMPORT_THRESHOLD
+      enqueue_background_import(file, owner_name: owner_name, patient_phone: patient_phone)
+    else
+      inline_import(file, owner_name: owner_name, patient_phone: patient_phone)
+    end
   rescue WhatsappImportService::ImportError => e
     redirect_to conversations_path, alert: "Import failed: #{e.message}", status: :see_other
   end
@@ -190,5 +190,41 @@ class ConversationsController < ApplicationController
     expire_dev_page_cache("conversations/index")
     expire_dev_page_cache("conversations/show")
     expire_dev_page_cache("dashboard")
+  end
+
+  def inline_import(file, owner_name:, patient_phone:)
+    result = WhatsappImportService.import_upload(
+      file,
+      owner_name:    owner_name,
+      patient_phone: patient_phone
+    )
+
+    notice = "Import complete — #{result.created} created, #{result.updated} updated"
+    notice += ", #{result.skipped} skipped" if result.skipped.positive?
+    notice += " (#{result.errors.size} error(s) — check logs)" if result.errors.any?
+    expire_conversation_caches!
+    redirect_to conversations_path, notice: notice, status: :see_other
+  end
+
+  def enqueue_background_import(file, owner_name:, patient_phone:)
+    # Persist the upload to a temp path so the job can read it after the
+    # request completes (uploaded_file IO is closed by Rack after the response).
+    tmp_dir  = Rails.root.join("tmp", "imports")
+    FileUtils.mkdir_p(tmp_dir)
+    filename = "#{SecureRandom.hex(8)}_#{File.basename(file.original_filename)}"
+    tmp_path = tmp_dir.join(filename).to_s
+
+    File.binwrite(tmp_path, file.read)
+
+    BulkWhatsappImportJob.perform_later(
+      file_path:         tmp_path,
+      original_filename: file.original_filename,
+      owner_name:        owner_name,
+      patient_phone:     patient_phone
+    )
+
+    redirect_to conversations_path,
+      notice: "Import queued — your file is being processed in the background. You'll see a notification when it's done.",
+      status: :see_other
   end
 end
