@@ -89,7 +89,7 @@ module Webhooks
 
       unless validator.validate(url, request.POST, twilio_signature.to_s)
         Rails.logger.warn("[Voice] Invalid Twilio signature from #{request.remote_ip}")
-        head :forbidden
+        return head :forbidden
       end
     end
 

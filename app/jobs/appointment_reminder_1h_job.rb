@@ -18,13 +18,18 @@ class AppointmentReminder1hJob < ApplicationJob
 
     Rails.logger.info("[Reminder1h] Sending reminders for #{appointments.count} appointment(s) in the 45–75 min window")
 
-    template_service = WhatsappTemplateService.new
+    template_service = begin
+      WhatsappTemplateService.new
+    rescue StandardError => e
+      Rails.logger.error("[Reminder1h] Template service unavailable: #{e.message}")
+      return
+    end
 
     appointments.each do |appointment|
       begin
         template_service.send_reminder_1h(appointment.patient, appointment)
         Rails.logger.info("[Reminder1h] Sent to #{appointment.patient.phone} (appointment #{appointment.id})")
-      rescue WhatsappTemplateService::Error => e
+      rescue StandardError => e
         Rails.logger.error("[Reminder1h] Failed for appointment #{appointment.id}: #{e.message}")
       end
     end

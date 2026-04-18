@@ -51,10 +51,15 @@ class WhatsappImportService
     def total = created + updated
   end
 
+  MAX_IMPORT_BYTES = 50 * 1024 * 1024 # 50 MB
+
   def self.import_file(path, owner_name: nil, patient_phone: nil)
     raise ImportError, "file not found: #{path}" unless File.exist?(path)
 
-    content = File.read(path)
+    raw = File.binread(path)
+    raise ImportError, "File too large (max 50 MB)" if raw.bytesize > MAX_IMPORT_BYTES
+
+    content = sanitize_encoding(raw)
     source_key = File.basename(path)
     ext = File.extname(path).downcase
 
@@ -74,7 +79,10 @@ class WhatsappImportService
     if ext == ".zip"
       import_zip(uploaded_file, owner_name: owner_name, patient_phone: patient_phone)
     else
-      content = uploaded_file.read
+      raw = uploaded_file.read
+      raise ImportError, "File too large (max 50 MB)" if raw.bytesize > MAX_IMPORT_BYTES
+
+      content = sanitize_encoding(raw)
       if ext == ".json"
         new(source_key: source_key).import_json(content)
       else
@@ -97,7 +105,7 @@ class WhatsappImportService
         entry_ext = File.extname(entry.name).downcase
         next unless entry_ext.in?(%w[.txt .json])
 
-        content    = entry.get_input_stream.read.force_encoding("UTF-8")
+        content    = sanitize_encoding(entry.get_input_stream.read)
         source_key = entry.name
 
         result =
@@ -120,6 +128,20 @@ class WhatsappImportService
   rescue Zip::Error => e
     raise ImportError, "Invalid zip file: #{e.message}"
   end
+
+  # Normalise raw bytes to a valid UTF-8 String.
+  # WhatsApp exports are usually UTF-8 (sometimes with a BOM). If the bytes
+  # aren't valid UTF-8 we transcode from binary, replacing bad sequences with
+  # empty string rather than raising Encoding::CompatibilityError.
+  def self.sanitize_encoding(raw)
+    return "" if raw.nil?
+
+    str = raw.dup.force_encoding("UTF-8")
+    return str.sub(/\A\xEF\xBB\xBF/, "") if str.valid_encoding? # strip UTF-8 BOM
+
+    raw.dup.encode("UTF-8", "binary", invalid: :replace, undef: :replace, replace: "")
+  end
+  private_class_method :sanitize_encoding
 
   def initialize(source_key:)
     @source_key = source_key
@@ -272,11 +294,13 @@ class WhatsappImportService
   end
 
   def find_or_create_patient(phone, display_name)
-    patient = Patient.find_by(phone: phone)
-    return patient if patient
-
-    first, last = split_name(display_name, phone)
-    Patient.create!(first_name: first, last_name: last, phone: phone)
+    Patient.find_by(phone: phone) || begin
+      first, last = split_name(display_name, phone)
+      Patient.create!(first_name: first, last_name: last, phone: phone)
+    rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
+      # Another concurrent import created the record between find and create
+      Patient.find_by!(phone: phone)
+    end
   end
 
   def split_name(display_name, phone_fallback)

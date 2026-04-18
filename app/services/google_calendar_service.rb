@@ -8,6 +8,12 @@ class GoogleCalendarService
   def initialize
     @service = Google::Apis::CalendarV3::CalendarService.new
     @service.authorization = authorization
+    @service.request_options.timeout_sec = 15
+    @service.request_options.open_timeout_sec = 5
+  rescue Error
+    raise
+  rescue StandardError => e
+    raise Error, "Google Calendar initialization failed: #{e.message}"
   end
 
   # Returns available 30-minute slots for a given date,
@@ -100,12 +106,16 @@ class GoogleCalendarService
   private
 
   def authorization
-    json_key = ENV.fetch("GOOGLE_SERVICE_ACCOUNT_JSON", "{}")
+    json_key = ENV.fetch("GOOGLE_SERVICE_ACCOUNT_JSON", nil)
+    raise Error, "GOOGLE_SERVICE_ACCOUNT_JSON is not configured" if json_key.blank? || json_key == "{}"
+
     key_io = StringIO.new(json_key)
     Google::Auth::ServiceAccountCredentials.make_creds(
       json_key_io: key_io,
       scope: Google::Apis::CalendarV3::AUTH_CALENDAR
     )
+  rescue JSON::ParserError => e
+    raise Error, "GOOGLE_SERVICE_ACCOUNT_JSON contains invalid JSON: #{e.message}"
   end
 
   def fetch_busy_periods(date)

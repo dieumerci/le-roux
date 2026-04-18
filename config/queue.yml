@@ -16,3 +16,28 @@ test:
 
 production:
   <<: *default
+  # Recurring tasks — all times are UTC (Africa/Johannesburg = UTC+2, no DST)
+  recurring_tasks:
+    # Day-before reminder at 07:30 SAST (05:30 UTC) Mon–Fri
+    appointment_reminder_24h:
+      class: AppointmentReminder24hJob
+      schedule: "30 5 * * 1-5"
+      queue: default
+
+    # Hourly 1-hour-before reminder Mon–Fri during clinic hours (06:00–15:00 UTC = 08:00–17:00 SAST)
+    appointment_reminder_1h:
+      class: AppointmentReminder1hJob
+      schedule: "0 6-15 * * 1-5"
+      queue: default
+
+    # Morning pending-confirmation processor at 08:00 SAST (06:00 UTC) Mon–Fri
+    morning_confirmation:
+      class: MorningConfirmationJob
+      schedule: "0 6 * * 1-5"
+      queue: default
+
+    # No-response follow-up every 5 minutes
+    no_response_followup:
+      class: NoResponseFollowUpJob
+      schedule: "*/5 * * * *"
+      queue: default

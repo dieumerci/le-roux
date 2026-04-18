@@ -1,7 +1,13 @@
 class ApplicationJob < ActiveJob::Base
-  # Automatically retry jobs that encountered a deadlock
-  # retry_on ActiveRecord::Deadlocked
+  retry_on ActiveRecord::Deadlocked, wait: 5.seconds, attempts: 3
+  retry_on ActiveRecord::StatementInvalid, wait: 10.seconds, attempts: 2
+  discard_on ActiveJob::DeserializationError
 
-  # Most jobs are safe to ignore if the underlying records are no longer available
-  # discard_on ActiveJob::DeserializationError
+  rescue_from StandardError do |e|
+    Rails.logger.error(
+      "[#{self.class.name}] Unhandled error: #{e.class}: #{e.message}\n" \
+      "#{e.backtrace&.first(5)&.join("\n")}"
+    )
+    raise
+  end
 end
