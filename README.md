@@ -283,8 +283,7 @@ Bot:     "A consultation is R850 and includes x-rays. Would you like
           to book one?"
 
 Patient: "Where are you located?"
-Bot:     "Dr Chalita le Roux Inc is located in Pretoria. Please call
-          or WhatsApp us for exact directions."
+Bot:     "Dr Chalita le Roux Inc is located in Unit 2, Amorosa Office Park, Corner of Doreen Road and Lawrence Road, Amorosa, Johannesburg, 2040 Please call or WhatsApp us for exact directions."
 ```
 
 ### Emergencies
