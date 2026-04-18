@@ -344,24 +344,34 @@ class WhatsappService
     appointments = patient.appointments.upcoming
 
     return if appointments.empty?
+    return unless entities[:date].present? && entities[:time].present?
 
-    # If new date/time provided, attempt reschedule
-    if entities[:date].present? && entities[:time].present?
-      appointment = appointments.first
-      return unless appointment.google_event_id
+    appointment = appointments.first
+    new_start = Time.zone.parse("#{entities[:date]} #{entities[:time]}")
+    duration = appointment.end_time - appointment.start_time
+    new_end = new_start + duration
 
-      calendar = GoogleCalendarService.new
-      new_start = Time.zone.parse("#{entities[:date]} #{entities[:time]}")
+    # Local record is source of truth — update regardless of Google Calendar state
+    appointment.update!(
+      start_time: new_start,
+      end_time: new_end,
+      status: :scheduled
+    )
 
-      calendar.reschedule_appointment(
-        appointment.google_event_id,
-        new_start: new_start
-      )
-
-      appointment.reload
-      send_reschedule_template(patient, appointment)
+    # Best-effort Google Calendar sync — failure does not roll back the local update
+    if appointment.google_event_id
+      begin
+        GoogleCalendarService.new.reschedule_appointment(
+          appointment.google_event_id,
+          new_start: new_start
+        )
+      rescue StandardError => e
+        Rails.logger.warn("[WhatsApp] Google Calendar reschedule sync skipped: #{e.message}")
+      end
     end
-  rescue GoogleCalendarService::Error => e
+
+    send_reschedule_template(patient, appointment)
+  rescue StandardError => e
     Rails.logger.error("[WhatsApp] Reschedule failed: #{e.message}")
   end
 
@@ -373,22 +383,25 @@ class WhatsappService
     return if appointments.empty?
 
     appointment = appointments.first
-    return unless appointment.google_event_id
-
-    calendar = GoogleCalendarService.new
-
-    # Extract cancellation reason from entities or default
     reason_category = extract_cancellation_reason(result)
 
-    calendar.cancel_appointment(
-      appointment.google_event_id,
-      reason_category: reason_category,
-      reason_details: "Cancelled via WhatsApp"
-    )
+    # Cancel locally first — Google Calendar sync is best-effort
+    appointment.cancelled!
 
-    appointment.reload
+    if appointment.google_event_id
+      begin
+        GoogleCalendarService.new.cancel_appointment(
+          appointment.google_event_id,
+          reason_category: reason_category,
+          reason_details: "Cancelled via WhatsApp"
+        )
+      rescue StandardError => e
+        Rails.logger.warn("[WhatsApp] Google Calendar cancel sync skipped: #{e.message}")
+      end
+    end
+
     send_cancellation_template(patient, appointment)
-  rescue GoogleCalendarService::Error => e
+  rescue StandardError => e
     Rails.logger.error("[WhatsApp] Cancellation failed: #{e.message}")
   end
 
