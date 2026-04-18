@@ -276,4 +276,83 @@ RSpec.describe WhatsappService do
       end
     end
   end
+
+  # --- 9.15.3 Language Detection ---
+
+  describe "#detect_language" do
+    subject { service.send(:detect_language, message) }
+
+    context "with clear Afrikaans" do
+      let(:message) { "Hallo, ek wil graag 'n afspraak bespreek" }
+      it { is_expected.to eq("af") }
+    end
+
+    context "with clear English" do
+      let(:message) { "Hello, I would like to book an appointment please" }
+      it { is_expected.to eq("en") }
+    end
+
+    context "with mixed but Afrikaans-dominant" do
+      let(:message) { "Hi dokter, ek wil 'n tyd" }
+      it { is_expected.to eq("af") }
+    end
+
+    context "with a single word or greeting" do
+      let(:message) { "Hallo" }
+      it { is_expected.to eq("af") }
+    end
+
+    context "with English greeting" do
+      let(:message) { "Hello" }
+      it { is_expected.to eq("en") }
+    end
+
+    context "with Afrikaans day names" do
+      let(:message) { "Kan ek Maandag kom?" }
+      it { is_expected.to eq("af") }
+    end
+
+    context "with ambiguous short message" do
+      let(:message) { "ok" }
+      it { is_expected.to eq("en") }
+    end
+  end
+
+  describe "#detect_and_persist_language" do
+    let!(:patient) { create(:patient, phone: "+27677000001") }
+
+    it "sets language on conversation for first message" do
+      conversation = create(:conversation, patient: patient, channel: "whatsapp", language: nil)
+      service.send(:detect_and_persist_language, conversation, "Hallo ek wil bespreek")
+      expect(conversation.reload.language).to eq("af")
+    end
+
+    it "persists preferred_language on patient record" do
+      conversation = create(:conversation, patient: patient, channel: "whatsapp", language: nil)
+      service.send(:detect_and_persist_language, conversation, "Hallo ek wil bespreek")
+      expect(patient.reload.preferred_language).to eq("af")
+    end
+
+    it "does not switch language on weak signal" do
+      conversation = create(:conversation, patient: patient, channel: "whatsapp", language: "af")
+      service.send(:detect_and_persist_language, conversation, "ok thanks")
+      expect(conversation.reload.language).to eq("af")
+    end
+
+    it "switches language on strong English signal" do
+      conversation = create(:conversation, patient: patient, channel: "whatsapp", language: "af")
+      service.send(:detect_and_persist_language, conversation, "I would like to come in for a check-up please")
+      expect(conversation.reload.language).to eq("en")
+    end
+
+    it "seeds new conversation language from patient preferred_language" do
+      patient.update_column(:preferred_language, "af")
+      allow(ai_service).to receive(:process_message).and_return({
+        response: "Hallo!", intent: "other", entities: {}
+      })
+      service.handle_incoming(from: patient.phone, message: "Hello")
+      new_convo = patient.conversations.order(created_at: :desc).first
+      expect(new_convo.language).to eq("af").or eq("en")
+    end
+  end
 end

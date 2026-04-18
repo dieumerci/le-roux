@@ -71,7 +71,8 @@ class WhatsappService
       channel: "whatsapp",
       status: "active",
       messages: [],
-      started_at: Time.current
+      started_at: Time.current,
+      language: patient.preferred_language.presence
     )
   end
 
@@ -704,30 +705,50 @@ class WhatsappService
   # Common Afrikaans words and patterns for fast detection.
   # We check against these before falling back to a default of English.
   AFRIKAANS_MARKERS = %w[
-    hallo goeie môre middag ek is wil graag asseblief dankie
-    dokter afspraak bespreek kan help my naam tyd dag
-    wanneer hoeveel kos dit maak besig oggend more vandag
-    vanaand maandag dinsdag woensdag donderdag vrydag
+    hallo goeie môre middag aand oggend
+    ek jy hy sy ons julle hulle
+    het kan sal wil moet
+    graag asseblief dankie baie seker
+    dokter afspraak bespreek tyd
+    wanneer hoeveel kos dit maak besig vandag
+    vanaand gister laasweek volgende
+    maandag dinsdag woensdag donderdag vrydag
     januarie februarie maart april mei junie julie augustus
     september oktober november desember
-    ja nee seker reg goed
+    ja nee reg beter nie ook
+    naam sê praat
+    pyn tand mond mondhigiëne
+    nuwe pasiënt bestaande
+    betaling mediesefonds kontant
+    adres rigting parkering
+    totsiens groete
+    hierdie daai wat waar waarom
   ].freeze
 
-  # Detect language from the message text and persist on the conversation.
+  # Detect language from the message text and persist on the conversation and patient.
   # Only runs detection if the conversation doesn't already have a language set,
   # OR if the user clearly switches language mid-conversation.
+  # Also keeps patient.preferred_language in sync for cross-conversation memory.
   def detect_and_persist_language(conversation, message)
     detected = detect_language(message)
+    patient = conversation.patient
 
     if conversation.language.blank?
-      # First message — set the language
       conversation.update_column(:language, detected)
       Rails.logger.info("[WhatsApp] Language detected: #{detected} (first message)")
     elsif detected != conversation.language && strong_language_signal?(message, detected)
-      # User switched language clearly
       conversation.update_column(:language, detected)
       Rails.logger.info("[WhatsApp] Language switched to: #{detected}")
     end
+
+    # Persist preferred language on the patient record if it's changed or unset.
+    # This gives us cross-conversation language memory.
+    current_lang = conversation.language
+    if patient.preferred_language != current_lang
+      patient.update_column(:preferred_language, current_lang)
+    end
+  rescue StandardError => e
+    Rails.logger.warn("[WhatsApp] detect_and_persist_language failed: #{e.message}")
   end
 
   # Simple heuristic language detection: count Afrikaans marker words.

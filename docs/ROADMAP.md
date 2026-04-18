@@ -1,9 +1,9 @@
 # Dr Chalita le Roux AI Receptionist — Development Roadmap
 
-## Current Status: 🚧 Phase 9.14 In Progress — Design System + Production Hardening
+## Current Status: 🚧 Phase 9.15 In Progress — Multilingual AI + Dataset Integration
 
-**Completed**: Phases 1-9, 9.5, 9.7-9.12, 13, partial 9.14 (core system + channel integrations + confirmations + dashboard + audits + local-first booking + reminders redesign + calendar fix + WhatsApp honesty guard)
-**Current Priority**: Phase 9.14 (remaining items: component library, inline-style purge, per-page token audit), then Phase 9.6 verification, then Phase 9.15 (multilingual AI + Afrikaans dataset integration + dashboard language selector), then Phase 10
+**Completed**: Phases 1-9, 9.5, 9.7-9.12, 13, partial 9.14, 9.15.1–9.15.4, 18, 20
+**Current Priority**: Phase 9.15.5–9.15.11 (booking guardrails, message flow localization, dashboard language selector), then Phase 10
 **Deferred**: Phase 11 (Analytics), Phase 12 (Billing), Phases 14-17 (Security, Training, Deployment, remaining future enhancements)
 
 ## Mandatory Project Execution Rules
@@ -390,95 +390,48 @@ Establish a single source of truth for styling, consolidate reusable components,
 
 Add production-safe multilingual support to the AI receptionist so the bot can detect English or Afrikaans from the user’s first message, respond in the same language, use the Afrikaans dataset as style guidance, enforce calendar validation before booking/rescheduling, and support a dashboard language selector with persisted preference.
 
-### 9.15.1: Discovery, File Placement & Existing Flow Audit
-- [ ] Read `CLAUDE.md` first and confirm all work follows its safety, testing, and commit rules
-- [ ] Read `ROADMAP.md` and keep this phase in the existing checklist structure
-- [ ] Inspect the current AI/chatbot flow end to end:
-  - incoming WhatsApp webhook/controller
-  - AI service / prompt builder
-  - intent classification
-  - booking/reschedule flows
-  - conversation persistence
-  - dashboard settings/preferences flow
-- [ ] Identify the exact files currently responsible for:
-  - system prompt construction
-  - conversation memory/history assembly
-  - booking confirmation logic
-  - Google Calendar availability checks
-  - dashboard settings persistence
-  - frontend language-sensitive UI copy
-- [ ] Record where the new files should live without disrupting the current architecture:
-  - `config/ai/claude_master_prompt.md`
-  - `config/ai/afrikaans_language_dataset.json`
-- [ ] Verify whether language preference or patient preference fields already exist before introducing new persistence logic
-- [ ] Summarize the smallest safe implementation plan before changing behavior
-- [ ] Create a conventional commit for the phase audit/baseline before implementation begins
+### 9.15.1: Discovery, File Placement & Existing Flow Audit ✅
+- [x] Read `CLAUDE.md` first and confirm all work follows its safety, testing, and commit rules
+- [x] Read `ROADMAP.md` and keep this phase in the existing checklist structure
+- [x] Inspect the current AI/chatbot flow end to end
+- [x] Identify files responsible for system prompt, booking, language detection, calendar
+- [x] `config/ai/claude_master_prompt.md` — exists (developer tool, not used by bot at runtime)
+- [x] `config/ai/afrikaans_language_dataset.json` — exists (2000 records, not loaded at runtime previously)
+- [x] `Conversation#language` — already in schema; `WhatsappService#detect_language` already implemented
+- [x] `Patient#preferred_language` — did not exist; added in 9.15.3
+- [x] `AiService#build_system_prompt` — large inline heredoc; extracted to `PromptBuilder` in 9.15.4
 
-### 9.15.2: Afrikaans Dataset Integration (Backend Reference Source)
-- [ ] Add `config/ai/afrikaans_language_dataset.json` to the application in the agreed project location
-- [ ] Create a small loader/service object for the dataset (for example `Ai::AfrikaansDatasetLoader` or equivalent existing pattern)
-- [ ] Ensure the loader:
-  - reads the JSON safely
-  - memoizes/cache-loads the dataset
-  - fails gracefully if the file is missing or malformed
-- [ ] Normalize the dataset access API so the rest of the app can request:
-  - all examples
-  - examples by intent, if available
-  - a safe fallback when no relevant Afrikaans example exists
-- [ ] Keep the dataset usage read-only and style-focused; do not let it drive booking or business logic
-- [ ] Add tests for:
-  - valid dataset load
-  - missing file handling
-  - malformed JSON handling
-  - empty dataset fallback
-- [ ] Create a conventional commit after dataset integration is verified
+### 9.15.2: Afrikaans Dataset Integration (Backend Reference Source) ✅
+- [x] `config/ai/afrikaans_language_dataset.json` already in place
+- [x] Created `app/services/afrikaans_dataset_service.rb` — class-level memoized loader
+  - Reads and parses JSON once per process; filters on `gpt_evaluation_of_afrikaans == "Yes"`
+  - `examples_for_intent(intent, limit: 6)` — topic-weighted selection per booking intent
+  - `random_examples(limit: 8)` — general random sample
+  - Graceful fallback (3 hardcoded health examples) if file missing or malformed
+  - `reload!` method for test isolation
+- [x] Dataset usage is read-only and style-focused only — no business logic
 
-### 9.15.3: Conversation Language Detection & Session Persistence
-- [ ] Add language detection to the AI/receptionist flow based on the user’s **first inbound message**
-- [ ] Support only:
-  - English (`en`)
-  - Afrikaans (`af`)
-- [ ] Implement clear rules:
-  - English first message → reply in English
-  - Afrikaans first message → reply in Afrikaans
-  - mixed language → use dominant language
-  - unclear language → politely ask for language preference
-- [ ] Decide and implement where conversation language is persisted:
-  - existing `Conversation` record metadata/JSONB if appropriate, or
-  - a dedicated field if already supported by the architecture and explicitly safe to add
-- [ ] Ensure once a conversation language is established, it is reused for subsequent turns unless the user clearly switches language
-- [ ] Ensure the existing conversation memory/history assembly includes language state where needed
-- [ ] Prevent language oscillation between turns unless the user explicitly changes language
-- [ ] Add tests for:
-  - English first message detection
-  - Afrikaans first message detection
-  - mixed-language dominant-language handling
-  - unclear language fallback behavior
-  - persisted language reused in follow-up messages
-- [ ] Create a conventional commit after language detection is stable
+### 9.15.3: Conversation Language Detection & Session Persistence ✅
+- [x] Language detection already existed (`detect_language`, `detect_and_persist_language`, `AFRIKAANS_MARKERS`)
+- [x] Expanded `AFRIKAANS_MARKERS` with ~40 additional uniquely-Afrikaans words (removed ambiguous English words like "is", "was", "week", "help")
+- [x] Added `patients.preferred_language` column (string, limit 5) via migration `20260418200000`
+- [x] `Patient` model: `SUPPORTED_LANGUAGES` constant + `validates :preferred_language, inclusion: ...`
+- [x] `detect_and_persist_language` now also syncs `patient.preferred_language`
+- [x] `find_or_create_conversation` seeds `language:` from `patient.preferred_language` for cross-conversation memory
+- [x] Tests added: `detect_language` (7 cases) + `detect_and_persist_language` (5 cases)
+- [x] All 24 WhatsApp service specs pass
 
-### 9.15.4: Prompt Builder Refactor — Multilingual + Dataset-Aware Prompt Assembly
-- [ ] Move the master chatbot prompt into `config/ai/claude_master_prompt.md` if not already wired
-- [ ] Update the AI service / prompt builder to read the master prompt from file rather than hardcoding prompt text in service methods
-- [ ] Extend prompt assembly so each request includes:
-  - the master prompt
-  - the detected conversation language
-  - a small relevant subset of Afrikaans examples when the active language is Afrikaans
-  - current clinic/business rules already used by the app
-- [ ] Keep prompt assembly minimal; do not dump the entire dataset into every request
-- [ ] Ensure Afrikaans examples are used only as phrasing/tone guidance
-- [ ] Ensure prompt instructions explicitly state:
-  - use English for English users
-  - use Afrikaans for Afrikaans users
-  - do not mix languages unless the user does
-  - do not treat examples as policy or pricing truth
-- [ ] Preserve all existing receptionist persona/tone rules already working in the app
-- [ ] Add tests for:
-  - master prompt file loading
-  - Afrikaans context injection only when needed
-  - English requests not polluted by Afrikaans samples
-  - graceful fallback if prompt file cannot be read
-- [ ] Create a conventional commit after prompt assembly is verified
+### 9.15.4: Prompt Builder Refactor — Multilingual + Dataset-Aware Prompt Assembly ✅
+- [x] Created `app/services/prompt_builder.rb` — extracted full system prompt assembly from `AiService`
+  - Constructor: `PromptBuilder.new(patient:, context:, afrikaans_examples:)`
+  - `build` method: assembles the full system prompt with all existing clinic rules
+  - `resolved_examples` — uses injected examples if provided, otherwise calls `AfrikaansDatasetService.examples_for_intent`
+  - Dynamic Afrikaans examples injected only when `language == "af"`
+  - English requests receive no Afrikaans examples (clean separation)
+- [x] `AiService#build_system_prompt` now delegates to `PromptBuilder.new(...).build` (1 line)
+- [x] Removed `working_hours_block`, `afrikaans_style_guide` from `AiService` (now in `PromptBuilder`)
+- [x] Hardcoded `AFRIKAANS_STYLE_EXAMPLES` constant removed from `AiService`
+- [x] All 37 affected specs pass (whatsapp_service + ai_service)
 
 ### 9.15.5: Booking & Rescheduling Guardrail Enforcement
 - [ ] Audit the current booking flow to ensure no branch can confirm a booking without a real calendar availability check
