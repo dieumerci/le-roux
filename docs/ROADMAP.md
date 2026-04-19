@@ -581,70 +581,59 @@ Add production-safe multilingual support to the AI receptionist so the bot can d
 - [ ] Commit after each sub-area (tokens, inline-style purge, component library, per-page refactor batches, calendar, production verification, patient fields)
 - [ ] Run `bundle exec rspec` and `npx vite build` before each commit
 
-## Phase 9.15: Multilingual AI Receptionist + Afrikaans Dataset Integration
+## Phase 9.16: Bot DB Integration — Real Availability Context & Patient Record Access
 
-Add production-ready English/Afrikaans support to the AI receptionist, wire in the Afrikaans dataset as style guidance, enforce first-message language detection, and add a dashboard language selector while preserving strict booking validation.
+Remove the "no patient record access" restriction and give the AI real-time availability data so it can offer genuine alternatives and reference a patient's existing appointments.
 
-### Project instructions + file organization
-- [ ] Read `CLAUDE.md` first before implementing this phase and follow it as the primary instruction file
-- [ ] Keep this `ROADMAP.md` as the source of truth and update it as each multilingual task is completed
-- [ ] Decide and document the final file locations for AI assets (recommended structure: `docs/`, `config/ai/` or `prompts/`, `data/language/`)
-- [ ] Place the Afrikaans dataset JSON in a maintainable location (for example `config/ai/afrikaans_language_dataset.json` or `data/language/afrikaans_language_dataset.json`)
-- [ ] Place the master Claude prompt in a maintainable location (for example `config/ai/claude_master_prompt.md` or `prompts/chatbot/claude_master_prompt.md`)
-- [ ] Ensure prompt loading is handled by application code (`AiService`, `PromptBuilder`, or equivalent) rather than hardcoded inline strings
+### 9.16.1 — AvailabilityService
+- [x] Create `app/services/availability_service.rb`
+  - `next_available_slots(from_date:, limit:)` — queries DoctorSchedule + Appointment table
+  - Generates 30-min slots Mon–Fri, skips cancelled-excluded conflicts, skips past times
+  - Uses `DoctorSchedule#working?` for break-time exclusion
+  - Returns array of human-readable strings (e.g. "Monday, 20 April at 09:00")
 
-### Afrikaans dataset ingestion + normalization
-- [ ] Convert the provided Afrikaans Excel dataset into structured JSON/JSONL suitable for runtime use
-- [ ] Normalize records into a consistent schema (language, intent, user example, assistant example, optional tags/notes)
-- [ ] Remove duplicates, blank rows, malformed examples, and obviously unusable records
-- [ ] Store the cleaned dataset in version-controlled project files if size permits; otherwise document the loading approach clearly
-- [ ] Add a lightweight loader/service to retrieve relevant Afrikaans examples by intent or semantic match
-- [ ] Ensure the dataset is used as style guidance only and cannot override clinic policy or safety rules
+### 9.16.2 — AiService availability injection
+- [x] In `AiService#process_message`, after intent classification:
+  - For `book` / `reschedule` intents: call `AvailabilityService#next_available_slots`
+  - Parse requested date from entities (fallback to today) to start slot search from correct date
+  - Inject `context[:available_slots]` into the prompt context
+  - Inject `context[:patient_appointments]` (patient's upcoming appointments) when patient is known
 
-### Language detection + conversation behavior
-- [ ] Detect the user's language from the very first message of the conversation
-- [ ] If the first message is English, respond in English and continue in English unless the user switches
-- [ ] If the first message is Afrikaans, respond in Afrikaans and continue in Afrikaans unless the user switches
-- [ ] If the message is mixed-language, choose the dominant language
-- [ ] If language confidence is low, ask whether the user prefers English or Afrikaans
-- [ ] Persist the active chat language in conversation state/session memory so follow-up turns remain consistent
-- [ ] Add support for storing preferred language on the patient record when available or confirmed
-- [ ] Use the Afrikaans dataset to improve Afrikaans tone, sentence structure, and phrasing; avoid awkward direct translations from English
-- [ ] Do not mix English and Afrikaans in the same response unless the user does so first
+### 9.16.3 — PromptBuilder overhaul
+- [x] Remove "NOT a receptionist with access to patient records" from opening persona line
+- [x] Remove MUST NOT items: "Pretend to access patient files", "Say you found or verified a patient record", "Imply you know previous treatment history"
+- [x] Add real-time availability section: renders injected slots or fallback note
+- [x] Add patient appointments section: renders upcoming appointments when present
+- [x] Critical rule: "Only offer slots from the availability list. Do NOT invent availability."
 
-### Claude prompt / AI service upgrade
-- [ ] Update the master Claude system prompt to include language rules, booking rules, escalation rules, and dashboard language requirements
-- [ ] Explicitly instruct the AI to use the Afrikaans dataset as a reference source for natural Afrikaans wording
-- [ ] Keep safety boundaries in the prompt: no diagnosis, no medication advice, no invented pricing, no invented availability
-- [ ] Add retrieval/context assembly so relevant Afrikaans examples can be injected into the Claude request when Afrikaans is detected
-- [ ] Ensure business rules (pricing, office hours, services, booking logic, location) still come from the approved clinic knowledge base
-- [ ] Add tests around prompt assembly to verify the correct language guidance is injected
+### 9.16.4 — Verification
+- [ ] Run `bundle exec rspec` — verify 0 failures
+- [ ] Manual test: ask bot "what slots do you have?" — should list real available times
+- [ ] Manual test: ask bot "I already have an appointment" — should acknowledge it, not deny access
+- [ ] Manual test: request unavailable slot — bot should offer next available alternatives
 
-### Booking and rescheduling validation hardening
-- [ ] Enforce a mandatory calendar check before every booking confirmation
-- [ ] Enforce a mandatory calendar check before every reschedule confirmation
-- [ ] If a requested slot is unavailable, do not book it — offer alternative available slots instead
-- [ ] Ensure the bot never claims a booking was made unless both persistence and availability checks succeeded
-- [ ] If the calendar service is unavailable, explain that availability cannot be confirmed right now and provide the next best step
-- [ ] Re-test WhatsApp and voice booking flows to verify the language rules do not bypass booking validation
+## Phase 9.17: Comprehensive Error Handling & Error Pages
 
-### Dashboard language selector (English / Afrikaans)
-- [ ] Add a dashboard language selector with exactly two options: English and Afrikaans
-- [ ] Persist the selected dashboard language as a user preference or session preference
-- [ ] Render dashboard labels, menus, buttons, helper text, and user-facing copy in the selected language
-- [ ] Default the dashboard to English when no preference exists
-- [ ] Optionally suggest the known chat language as the initial dashboard preference, while still allowing manual override
-- [ ] Add translation keys/resources for dashboard UI strings and keep them centralized
-- [ ] Ensure switching dashboard language does not affect booking data, statuses, timestamps, or business logic
+Production-grade error surfaces: custom 404/422/500 pages via Inertia, React error boundary, and audit of unhandled failure paths.
 
-### Tests, QA, and commit cadence
-- [ ] Add/update specs for first-message language detection
-- [ ] Add/update specs for Afrikaans-response behavior when Afrikaans input is used
-- [ ] Add/update specs for fallback behavior when language is unclear
-- [ ] Add/update specs for mandatory calendar validation before booking/rescheduling
-- [ ] Add/update frontend tests or QA steps for dashboard language switching
-- [ ] Run `bundle exec rspec` and `npx vite build` before each multilingual-related commit
-- [ ] Commit the roadmap merge first, then commit dataset ingestion, prompt integration, language detection, calendar enforcement, and dashboard language selector as separate conventional commits
+### 9.17.1 — Rails exceptions_app
+- [x] `config/application.rb`: set `config.exceptions_app = self.routes`
+- [x] Add error routes in `config/routes.rb`
+- [x] Create `app/controllers/errors_controller.rb` with actions: `not_found`, `unprocessable`, `server_error`
+- [x] Each action renders an Inertia page with status code and message props
+
+### 9.17.2 — React error pages
+- [x] Create `app/javascript/pages/ErrorPage.jsx` — unified component handling 404, 422, 500
+- [x] Shows status code, descriptive title, and "Back to Dashboard" button
+- [x] Styled with brand tokens (consistent with rest of dashboard)
+- [x] React error boundary in `entrypoints/inertia.jsx` (catches JS crashes, shows fallback UI)
+
+### 9.17.3 — Verification
+- [ ] Visit `/404` directly — see branded 404 page
+- [ ] Visit `/500` directly — see branded 500 page
+- [ ] Trigger a 422 from a form submission — see 422 page
+- [ ] Verify "Back to Dashboard" returns to root
+- [ ] Run `bundle exec rspec` — 0 failures
 
 ## Phase 10: Import Historical WhatsApp Chats
 

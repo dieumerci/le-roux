@@ -26,5 +26,9 @@ module DrLerouxReceptionist
 
     # Session store for Inertia dashboard (middleware already included via rails/all)
     config.session_store :cookie_store, key: "_dr_leroux_receptionist_session"
+
+    # Route exceptions through our own ErrorsController so Inertia renders
+    # branded 404/422/500 pages instead of the default Rails HTML pages.
+    config.exceptions_app = self.routes
   end
 end

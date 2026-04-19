@@ -58,4 +58,9 @@ Rails.application.routes.draw do
   get "analytics", to: "analytics#index"
   get "settings", to: "settings#index"
   post "settings/language", to: "settings#update_language"
+
+  # Error pages — matched by exceptions_app when Rails catches a routing/HTTP error
+  match "/404", to: "errors#not_found",    via: :all
+  match "/422", to: "errors#unprocessable", via: :all
+  match "/500", to: "errors#server_error",  via: :all
 end

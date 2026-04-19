@@ -104,6 +104,9 @@ class AiService
     language = conversation&.language || "en"
     context = { intent: classification[:intent], entities: classification[:entities], language: language }
 
+    # Inject real appointment availability so the bot can offer genuine alternatives
+    inject_availability_context!(context, classification, patient)
+
     response_text = generate_response(
       message: message,
       conversation_history: history,
@@ -208,6 +211,32 @@ class AiService
   # and injects dynamically fetched Afrikaans examples when applicable.
   def build_system_prompt(patient: nil, context: {})
     PromptBuilder.new(patient: patient, context: context).build
+  end
+
+  # Mutates `context` in place with real availability data so PromptBuilder
+  # can surface genuine slots and the bot stops claiming it has no calendar access.
+  def inject_availability_context!(context, classification, patient)
+    return unless %w[book reschedule].include?(classification[:intent])
+
+    requested_date = begin
+      raw = classification.dig(:entities, :date)
+      Date.parse(raw) if raw.present?
+    rescue ArgumentError
+      nil
+    end
+
+    from_date = [ requested_date, Date.current ].compact.max
+    slots = AvailabilityService.new.next_available_slots(from_date: from_date, limit: 5)
+    context[:available_slots] = slots unless slots.empty?
+
+    if patient
+      upcoming = patient.appointments.upcoming.limit(3).map do |a|
+        "#{a.start_time.strftime('%A, %-d %B at %H:%M')} (#{a.status.humanize} – #{a.reason})"
+      end
+      context[:patient_appointments] = upcoming unless upcoming.empty?
+    end
+  rescue StandardError => e
+    Rails.logger.warn("[AiService] inject_availability_context! failed: #{e.message}")
   end
 
   # Check if a given time falls within working hours.
