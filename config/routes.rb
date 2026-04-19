@@ -58,8 +58,10 @@ Rails.application.routes.draw do
   get "analytics", to: "analytics#index"
   get "audit-log", to: "audit_logs#index", as: :audit_log
   get "audit-log/export", to: "audit_logs#export", as: :audit_log_export
-  get "settings", to: "settings#index"
-  post "settings/language", to: "settings#update_language"
+  get   "settings",          to: "settings#index"
+  post  "settings/language", to: "settings#update_language"
+  patch "settings/practice", to: "settings#update_practice", as: :settings_practice
+  patch "settings/pricing",  to: "settings#update_pricing",  as: :settings_pricing
 
   # Error pages — matched by exceptions_app when Rails catches a routing/HTTP error
   match "/404", to: "errors#not_found",    via: :all

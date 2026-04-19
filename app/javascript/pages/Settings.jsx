@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
+import { router } from '@inertiajs/react'
+import { toast } from 'sonner'
 import {
   Globe, Clock, Bell, Palette, MapPin, Phone, Mail,
-  Building2, CreditCard, ExternalLink, CheckCircle2, XCircle,
+  Building2, CreditCard, ExternalLink, CheckCircle2, XCircle, Save,
 } from 'lucide-react'
 import DashboardLayout from '../layouts/DashboardLayout'
 import { useLanguage } from '../lib/LanguageContext'
@@ -65,6 +67,68 @@ export default function Settings({ schedules, pricing, practice, notifications }
 
 /* ── Practice Info Tab ──────────────────────────────────────────────── */
 function PracticeTab({ practice, pricing, t }) {
+  const [practiceForm, setPracticeForm] = useState({ ...practice })
+  const [pricingForm, setPricingForm] = useState({ ...pricing })
+  const [savingPractice, setSavingPractice] = useState(false)
+  const [savingPricing, setSavingPricing] = useState(false)
+
+  const savePractice = (e) => {
+    e.preventDefault()
+    setSavingPractice(true)
+    router.patch('/settings/practice', { practice: practiceForm }, {
+      preserveScroll: true,
+      onSuccess: () => toast.success('Practice details saved'),
+      onError: () => toast.error('Failed to save practice details'),
+      onFinish: () => setSavingPractice(false),
+    })
+  }
+
+  const savePricing = (e) => {
+    e.preventDefault()
+    setSavingPricing(true)
+    router.patch('/settings/pricing', {
+      pricing: {
+        price_consultation: pricingForm.consultation,
+        price_check_up:     pricingForm.check_up,
+        price_cleaning:     pricingForm.cleaning,
+      }
+    }, {
+      preserveScroll: true,
+      onSuccess: () => toast.success('Pricing saved'),
+      onError: () => toast.error('Failed to save pricing'),
+      onFinish: () => setSavingPricing(false),
+    })
+  }
+
+  const practiceField = (key, label, placeholder, icon) => (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-semibold text-brand-muted uppercase tracking-wide">
+        {icon && React.createElement(icon, { size: 12, className: 'inline mr-1 text-brand-muted' })}
+        {label}
+      </label>
+      <input
+        type="text"
+        value={practiceForm[key] || ''}
+        onChange={e => setPracticeForm(f => ({ ...f, [key]: e.target.value }))}
+        placeholder={placeholder}
+        className="h-9 rounded-lg border border-brand-border bg-brand-surface px-3 text-sm text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary"
+      />
+    </div>
+  )
+
+  const pricingField = (key, label) => (
+    <div className="flex items-center gap-3">
+      <label className="w-36 text-sm font-medium text-brand-ink capitalize">{label}</label>
+      <input
+        type="text"
+        value={pricingForm[key] || ''}
+        onChange={e => setPricingForm(f => ({ ...f, [key]: e.target.value }))}
+        placeholder="e.g. approximately R850"
+        className="flex-1 h-9 rounded-lg border border-brand-border bg-brand-surface px-3 text-sm text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary"
+      />
+    </div>
+  )
+
   return (
     <div className="space-y-6">
       {/* Practice Details */}
@@ -73,33 +137,40 @@ function PracticeTab({ practice, pricing, t }) {
         title={t('settings_practice_info')}
         subtitle={t('settings_practice_info_desc')}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <FieldDisplay label={t('settings_practice_name')} value={practice?.name} />
-          <FieldDisplay label={t('settings_practice_email')} value={practice?.email} icon={Mail} />
-          <FieldDisplay label={t('settings_practice_phone')} value={practice?.phone} icon={Phone} />
-          <div className="md:col-span-2">
-            <FieldDisplay
-              label={t('settings_practice_address')}
-              value={`${practice?.address}\n${practice?.address_line2}\n${practice?.city}`}
-              icon={MapPin}
-              multiline
-            />
+        <form onSubmit={savePractice} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {practiceField('name', t('settings_practice_name'), 'Practice name')}
+            {practiceField('phone', t('settings_practice_phone'), '+27 XX XXX XXXX', Phone)}
+            {practiceField('email', t('settings_practice_email'), 'reception@example.com', Mail)}
+            {practiceField('emergency_phone', 'Emergency phone', '071 XXX XXXX', Phone)}
+            {practiceField('address_line1', 'Address line 1', 'Unit 2, Building Name', MapPin)}
+            {practiceField('address_line2', 'Address line 2', 'Corner of Street A & Street B')}
+            {practiceField('city', 'City / Suburb', 'Roodepoort, Johannesburg, 2040')}
+            {practiceField('map_link', 'Google Maps link', 'https://maps.app.goo.gl/...')}
           </div>
-          {practice?.map_link && (
-            <div className="md:col-span-2">
-              <a
-                href={practice.map_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm text-brand-primary hover:underline"
-              >
-                <MapPin size={14} />
-                {t('settings_view_on_map')}
-                <ExternalLink size={12} />
-              </a>
-            </div>
+          {practiceForm.map_link && (
+            <a
+              href={practiceForm.map_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm text-brand-primary hover:underline"
+            >
+              <MapPin size={14} />
+              {t('settings_view_on_map')}
+              <ExternalLink size={12} />
+            </a>
           )}
-        </div>
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={savingPractice}
+              className="flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-brand-primary/90 disabled:opacity-50"
+            >
+              <Save size={15} />
+              {savingPractice ? 'Saving…' : 'Save Practice Details'}
+            </button>
+          </div>
+        </form>
       </Card>
 
       {/* Pricing */}
@@ -108,24 +179,25 @@ function PracticeTab({ practice, pricing, t }) {
         title={t('settings_pricing')}
         subtitle={t('settings_pricing_desc')}
       >
-        <div className="divide-y divide-brand-border">
-          {pricing && Object.entries(pricing).map(([treatment, price]) => (
-            <div key={treatment} className="flex items-center justify-between py-3.5 first:pt-0 last:pb-0">
-              <span className="text-sm font-medium text-brand-ink capitalize">{treatment}</span>
-              <span className="text-sm font-semibold text-brand-primary">{price}</span>
-            </div>
-          ))}
-          <div className="flex items-center justify-between py-3.5 last:pb-0">
-            <span className="text-sm text-brand-muted">{t('settings_all_other')}</span>
-            <span className="text-sm text-brand-muted italic">{t('settings_requires_consult')}</span>
-          </div>
-        </div>
+        <form onSubmit={savePricing} className="space-y-3">
+          {pricingField('consultation', 'Consultation')}
+          {pricingField('check_up', 'Check-up')}
+          {pricingField('cleaning', 'Cleaning')}
 
-        <div className="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3.5">
-          <p className="text-xs text-amber-800">
-            {t('settings_cash_practice_note')}
-          </p>
-        </div>
+          <div className="flex items-center justify-between pt-1">
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex-1 mr-4">
+              <p className="text-xs text-amber-800">{t('settings_cash_practice_note')}</p>
+            </div>
+            <button
+              type="submit"
+              disabled={savingPricing}
+              className="flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-brand-primary/90 disabled:opacity-50"
+            >
+              <Save size={15} />
+              {savingPricing ? 'Saving…' : 'Save Pricing'}
+            </button>
+          </div>
+        </form>
       </Card>
     </div>
   )
@@ -321,21 +393,6 @@ function Card({ icon: Icon, title, subtitle, children }) {
   )
 }
 
-function FieldDisplay({ label, value, icon: Icon, multiline }) {
-  return (
-    <div>
-      <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-1.5">{label}</p>
-      <div className="flex items-start gap-2">
-        {Icon && <Icon size={14} className="text-brand-muted mt-0.5 flex-shrink-0" />}
-        {multiline ? (
-          <p className="text-sm text-brand-ink whitespace-pre-line">{value || '—'}</p>
-        ) : (
-          <p className="text-sm text-brand-ink">{value || '—'}</p>
-        )}
-      </div>
-    </div>
-  )
-}
 
 function StatusDot({ active, label }) {
   return (
