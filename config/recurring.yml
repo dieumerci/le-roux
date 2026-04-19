@@ -28,3 +28,8 @@ production:
     class: AppointmentReminder1hJob
     queue: default
     schedule: every hour
+
+  appointment_no_confirmation:
+    class: AppointmentNoConfirmationJob
+    queue: default
+    schedule: every day at 7:30am
