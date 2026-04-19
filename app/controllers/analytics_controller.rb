@@ -6,7 +6,7 @@ class AnalyticsController < ApplicationController
         booking_stats: booking_stats,
         channel_stats: channel_stats,
         daily_bookings: daily_bookings,
-        status_distribution: status_distribution,
+        status_distribution: status_distribution
       }
     end
 
