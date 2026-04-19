@@ -70,6 +70,14 @@ class PatientsController < ApplicationController
     if result.success?
       expire_patient_caches!
       NotificationService.patient_created(patient) if result.created?
+      AuditService.log(
+        action: result.created? ? "patient.created" : "patient.updated",
+        summary: "#{result.created? ? 'Created' : 'Updated'} patient record for #{patient.full_name}",
+        resource: patient,
+        details: { phone: patient.phone, email: patient.email },
+        performed_by: audit_performer,
+        ip_address: request.remote_ip
+      )
       redirect_to patient_path(patient),
         notice: patient_create_notice(result),
         status: :see_other
@@ -95,6 +103,14 @@ class PatientsController < ApplicationController
 
     if patient.update(patient_params)
       expire_patient_caches!
+      AuditService.log(
+        action: "patient.updated",
+        summary: "Updated patient record for #{patient.full_name}",
+        resource: patient,
+        details: { phone: patient.phone },
+        performed_by: audit_performer,
+        ip_address: request.remote_ip
+      )
       redirect_back fallback_location: patient_path(patient),
         notice: "Patient updated", status: :see_other
     else

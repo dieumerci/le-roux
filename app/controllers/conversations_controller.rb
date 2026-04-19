@@ -71,6 +71,14 @@ class ConversationsController < ApplicationController
     WhatsappTemplateService.new.send_text(conversation.patient.phone, body)
     conversation.add_message(role: "assistant", content: body, timestamp: Time.current)
     conversation.update!(status: "active") if conversation.status == "closed"
+    AuditService.log(
+      action: "conversation.replied",
+      summary: "Sent manual reply to #{conversation.patient.full_name} via WhatsApp",
+      resource: conversation,
+      details: { patient_phone: conversation.patient.phone, body: body.truncate(120) },
+      performed_by: audit_performer,
+      ip_address: request.remote_ip
+    )
     expire_conversation_caches!
 
     redirect_to conversation_path(conversation),

@@ -34,6 +34,10 @@ class ApplicationController < ActionController::Base
   # Defensive wrapper: if the notifications table isn't present yet
   # (fresh dev clone before `db:migrate`) we shouldn't blow up every
   # page render.
+  def audit_performer
+    "Staff"
+  end
+
   def safe_unread_count
     Rails.cache.fetch("notifications/unread_count", expires_in: 30.seconds) do
       Notification.unread.count

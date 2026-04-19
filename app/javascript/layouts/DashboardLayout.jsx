@@ -3,7 +3,7 @@ import { Link, router, usePage } from '@inertiajs/react'
 import {
   LayoutDashboard, Calendar, Users, MessageSquare, BarChart2,
   BellRing, Settings, ChevronDown, HelpCircle, Globe,
-  User, LogOut, KeyRound,
+  User, LogOut, KeyRound, ClipboardList,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import GlobalSearch from '../components/GlobalSearch'
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { key: 'nav_patients',      href: '/patients',      icon: Users },
   { key: 'nav_conversations', href: '/conversations', icon: MessageSquare },
   { key: 'nav_analytics',     href: '/analytics',     icon: BarChart2 },
+  { key: 'nav_audit_log',    href: '/audit-log',     icon: ClipboardList },
 ]
 
 export default function DashboardLayout({ children }) {

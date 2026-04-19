@@ -123,6 +123,14 @@ class AppointmentsController < ApplicationController
       NotificationService.appointment_created(appointment)
       AppointmentMailer.confirmation(appointment).deliver_later
       SmsService.send_confirmation(appointment) rescue nil
+      AuditService.log(
+        action: "appointment.created",
+        summary: "Booked appointment for #{appointment.patient.full_name} on #{appointment.start_time.strftime('%-d %b %Y at %H:%M')}",
+        resource: appointment,
+        details: { patient_id: appointment.patient_id, reason: appointment.reason, start_time: appointment.start_time.iso8601 },
+        performed_by: audit_performer,
+        ip_address: request.remote_ip
+      )
     end
     expire_appointment_caches!
 
@@ -183,6 +191,15 @@ class AppointmentsController < ApplicationController
     sync_google_calendar(appointment) if attrs[:start_time].present?
 
     NotificationService.appointment_rescheduled(appointment) if attrs[:start_time].present?
+
+    AuditService.log(
+      action: "appointment.updated",
+      summary: "Updated appointment for #{appointment.patient.full_name} on #{appointment.start_time.strftime('%-d %b %Y at %H:%M')}",
+      resource: appointment,
+      details: attrs.transform_values { |v| v.respond_to?(:iso8601) ? v.iso8601 : v },
+      performed_by: audit_performer,
+      ip_address: request.remote_ip
+    )
     expire_appointment_caches!
 
     redirect_to appointments_location(appointment.start_time.to_date.iso8601),
@@ -228,6 +245,14 @@ class AppointmentsController < ApplicationController
     NotificationService.appointment_cancelled(appointment, reason: cancel_params[:category])
     AppointmentMailer.cancellation(appointment).deliver_later
     SmsService.send_cancellation(appointment) rescue nil
+    AuditService.log(
+      action: "appointment.cancelled",
+      summary: "Cancelled appointment for #{appointment.patient.full_name} on #{appointment.start_time.strftime('%-d %b %Y at %H:%M')}",
+      resource: appointment,
+      details: { reason_category: cancel_params[:category], details: cancel_params[:details] }.compact,
+      performed_by: audit_performer,
+      ip_address: request.remote_ip
+    )
     expire_appointment_caches!
 
     redirect_back fallback_location: appointments_path,
@@ -246,6 +271,13 @@ class AppointmentsController < ApplicationController
     appointment = Appointment.find(params[:id])
     appointment.confirmed!
     NotificationService.appointment_confirmed(appointment)
+    AuditService.log(
+      action: "appointment.confirmed",
+      summary: "Confirmed appointment for #{appointment.patient.full_name} on #{appointment.start_time.strftime('%-d %b %Y at %H:%M')}",
+      resource: appointment,
+      performed_by: audit_performer,
+      ip_address: request.remote_ip
+    )
     expire_appointment_caches!
     redirect_back fallback_location: appointments_path,
       notice: "Appointment confirmed", status: :see_other

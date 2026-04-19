@@ -56,6 +56,8 @@ Rails.application.routes.draw do
     end
   end
   get "analytics", to: "analytics#index"
+  get "audit-log", to: "audit_logs#index", as: :audit_log
+  get "audit-log/export", to: "audit_logs#export", as: :audit_log_export
   get "settings", to: "settings#index"
   post "settings/language", to: "settings#update_language"
 

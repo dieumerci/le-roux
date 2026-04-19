@@ -10,11 +10,18 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
-  # These are extensions that must be enabled in order to support this database
-  enable_extension "pg_catalog.plpgsql"
+ActiveRecord::Schema[8.1].define(version: 2026_04_19_061821) do
+  create_schema "extensions"
 
-  create_table "analytics_events", force: :cascade do |t|
+  # These are extensions that must be enabled in order to support this database
+  enable_extension "extensions.pg_stat_statements"
+  enable_extension "extensions.pgcrypto"
+  enable_extension "extensions.uuid-ossp"
+  enable_extension "graphql.pg_graphql"
+  enable_extension "pg_catalog.plpgsql"
+  enable_extension "vault.supabase_vault"
+
+  create_table "public.analytics_events", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "event_type", null: false
     t.datetime "occurred_at", null: false
@@ -26,7 +33,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["occurred_at"], name: "index_analytics_events_on_occurred_at"
   end
 
-  create_table "appointments", force: :cascade do |t|
+  create_table "public.appointments", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "end_time", null: false
     t.string "google_event_id"
@@ -42,7 +49,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["status"], name: "index_appointments_on_status"
   end
 
-  create_table "call_logs", force: :cascade do |t|
+  create_table "public.audit_logs", force: :cascade do |t|
+    t.string "action", null: false
+    t.datetime "created_at", null: false
+    t.jsonb "details", default: {}
+    t.string "ip_address"
+    t.string "performed_by"
+    t.bigint "resource_id"
+    t.string "resource_type"
+    t.string "summary", null: false
+    t.datetime "updated_at", null: false
+    t.index ["action"], name: "index_audit_logs_on_action"
+    t.index ["created_at"], name: "index_audit_logs_on_created_at"
+    t.index ["performed_by"], name: "index_audit_logs_on_performed_by"
+    t.index ["resource_type", "resource_id"], name: "index_audit_logs_on_resource_type_and_resource_id"
+  end
+
+  create_table "public.call_logs", force: :cascade do |t|
     t.text "ai_response"
     t.string "caller_number"
     t.datetime "created_at", null: false
@@ -58,7 +81,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["twilio_call_sid"], name: "index_call_logs_on_twilio_call_sid", unique: true
   end
 
-  create_table "cancellation_reasons", force: :cascade do |t|
+  create_table "public.cancellation_reasons", force: :cascade do |t|
     t.bigint "appointment_id", null: false
     t.datetime "created_at", null: false
     t.text "details"
@@ -68,7 +91,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["reason_category"], name: "index_cancellation_reasons_on_reason_category"
   end
 
-  create_table "confirmation_logs", force: :cascade do |t|
+  create_table "public.confirmation_logs", force: :cascade do |t|
     t.bigint "appointment_id", null: false
     t.integer "attempts", default: 0, null: false
     t.datetime "created_at", null: false
@@ -82,7 +105,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["outcome"], name: "index_confirmation_logs_on_outcome"
   end
 
-  create_table "conversations", force: :cascade do |t|
+  create_table "public.conversations", force: :cascade do |t|
     t.string "channel", null: false
     t.datetime "created_at", null: false
     t.datetime "ended_at"
@@ -107,7 +130,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["status"], name: "index_conversations_on_status"
   end
 
-  create_table "doctor_schedules", force: :cascade do |t|
+  create_table "public.doctor_schedules", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.time "break_end"
     t.time "break_start"
@@ -119,7 +142,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["day_of_week"], name: "index_doctor_schedules_on_day_of_week", unique: true
   end
 
-  create_table "notifications", force: :cascade do |t|
+  create_table "public.notifications", force: :cascade do |t|
     t.bigint "appointment_id"
     t.text "body"
     t.string "category", null: false
@@ -139,7 +162,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["read_at"], name: "index_notifications_on_unread", where: "(read_at IS NULL)"
   end
 
-  create_table "patient_medical_histories", force: :cascade do |t|
+  create_table "public.patient_medical_histories", force: :cascade do |t|
     t.text "allergies"
     t.string "blood_type"
     t.text "chronic_conditions"
@@ -156,7 +179,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["patient_id"], name: "index_patient_medical_histories_on_patient_id", unique: true
   end
 
-  create_table "patients", force: :cascade do |t|
+  create_table "public.patients", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "date_of_birth"
     t.string "email"
@@ -171,7 +194,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["preferred_language"], name: "index_patients_on_preferred_language"
   end
 
-  create_table "solid_cable_messages", force: :cascade do |t|
+  create_table "public.solid_cable_messages", force: :cascade do |t|
     t.binary "channel", null: false
     t.bigint "channel_hash", null: false
     t.datetime "created_at", null: false
@@ -181,7 +204,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["created_at"], name: "index_solid_cable_messages_on_created_at"
   end
 
-  create_table "solid_cache_entries", force: :cascade do |t|
+  create_table "public.solid_cache_entries", force: :cascade do |t|
     t.integer "byte_size", null: false
     t.datetime "created_at", null: false
     t.binary "key", null: false
@@ -192,7 +215,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["key_hash"], name: "index_solid_cache_entries_on_key_hash", unique: true
   end
 
-  create_table "solid_queue_blocked_executions", force: :cascade do |t|
+  create_table "public.solid_queue_blocked_executions", force: :cascade do |t|
     t.string "concurrency_key", null: false
     t.datetime "created_at", null: false
     t.datetime "expires_at", null: false
@@ -204,7 +227,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["job_id"], name: "index_solid_queue_blocked_executions_on_job_id", unique: true
   end
 
-  create_table "solid_queue_claimed_executions", force: :cascade do |t|
+  create_table "public.solid_queue_claimed_executions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "job_id", null: false
     t.bigint "process_id"
@@ -212,14 +235,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["process_id", "job_id"], name: "index_solid_queue_claimed_executions_on_process_id_and_job_id"
   end
 
-  create_table "solid_queue_failed_executions", force: :cascade do |t|
+  create_table "public.solid_queue_failed_executions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "error"
     t.bigint "job_id", null: false
     t.index ["job_id"], name: "index_solid_queue_failed_executions_on_job_id", unique: true
   end
 
-  create_table "solid_queue_jobs", force: :cascade do |t|
+  create_table "public.solid_queue_jobs", force: :cascade do |t|
     t.string "active_job_id"
     t.text "arguments"
     t.string "class_name", null: false
@@ -237,13 +260,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["scheduled_at", "finished_at"], name: "index_solid_queue_jobs_for_alerting"
   end
 
-  create_table "solid_queue_pauses", force: :cascade do |t|
+  create_table "public.solid_queue_pauses", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "queue_name", null: false
     t.index ["queue_name"], name: "index_solid_queue_pauses_on_queue_name", unique: true
   end
 
-  create_table "solid_queue_processes", force: :cascade do |t|
+  create_table "public.solid_queue_processes", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "hostname"
     t.string "kind", null: false
@@ -257,7 +280,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["supervisor_id"], name: "index_solid_queue_processes_on_supervisor_id"
   end
 
-  create_table "solid_queue_ready_executions", force: :cascade do |t|
+  create_table "public.solid_queue_ready_executions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "job_id", null: false
     t.integer "priority", default: 0, null: false
@@ -267,7 +290,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["queue_name", "priority", "job_id"], name: "index_solid_queue_poll_by_queue"
   end
 
-  create_table "solid_queue_recurring_executions", force: :cascade do |t|
+  create_table "public.solid_queue_recurring_executions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "job_id", null: false
     t.datetime "run_at", null: false
@@ -276,7 +299,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["task_key", "run_at"], name: "index_solid_queue_recurring_executions_on_task_key_and_run_at", unique: true
   end
 
-  create_table "solid_queue_recurring_tasks", force: :cascade do |t|
+  create_table "public.solid_queue_recurring_tasks", force: :cascade do |t|
     t.text "arguments"
     t.string "class_name"
     t.string "command", limit: 2048
@@ -292,7 +315,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["static"], name: "index_solid_queue_recurring_tasks_on_static"
   end
 
-  create_table "solid_queue_scheduled_executions", force: :cascade do |t|
+  create_table "public.solid_queue_scheduled_executions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "job_id", null: false
     t.integer "priority", default: 0, null: false
@@ -302,7 +325,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["scheduled_at", "priority", "job_id"], name: "index_solid_queue_dispatch_all"
   end
 
-  create_table "solid_queue_semaphores", force: :cascade do |t|
+  create_table "public.solid_queue_semaphores", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "expires_at", null: false
     t.string "key", null: false
@@ -313,19 +336,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_200000) do
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
-  add_foreign_key "appointments", "patients"
-  add_foreign_key "call_logs", "patients"
-  add_foreign_key "cancellation_reasons", "appointments"
-  add_foreign_key "confirmation_logs", "appointments"
-  add_foreign_key "conversations", "patients"
-  add_foreign_key "notifications", "appointments"
-  add_foreign_key "notifications", "conversations"
-  add_foreign_key "notifications", "patients"
-  add_foreign_key "patient_medical_histories", "patients"
-  add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
-  add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
-  add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
-  add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
-  add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
-  add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "public.appointments", "public.patients"
+  add_foreign_key "public.call_logs", "public.patients"
+  add_foreign_key "public.cancellation_reasons", "public.appointments"
+  add_foreign_key "public.confirmation_logs", "public.appointments"
+  add_foreign_key "public.conversations", "public.patients"
+  add_foreign_key "public.notifications", "public.appointments"
+  add_foreign_key "public.notifications", "public.conversations"
+  add_foreign_key "public.notifications", "public.patients"
+  add_foreign_key "public.patient_medical_histories", "public.patients"
+  add_foreign_key "public.solid_queue_blocked_executions", "public.solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "public.solid_queue_claimed_executions", "public.solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "public.solid_queue_failed_executions", "public.solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "public.solid_queue_ready_executions", "public.solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "public.solid_queue_recurring_executions", "public.solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "public.solid_queue_scheduled_executions", "public.solid_queue_jobs", column: "job_id", on_delete: :cascade
+
 end
