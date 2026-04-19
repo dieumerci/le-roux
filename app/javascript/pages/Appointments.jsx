@@ -89,16 +89,9 @@ export default function Appointments({
       accessorKey: 'patient_name',
       header: t('apt_col_patient'),
       cell: ({ row }) => (
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-brand-primary/10">
-            <span className="text-xs font-semibold text-brand-primary">
-              {initials(row.original.patient_name)}
-            </span>
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-brand-ink">{row.original.patient_name}</p>
-            <p className="text-xs text-brand-muted">{row.original.patient_phone}</p>
-          </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-brand-ink">{row.original.patient_name}</p>
+          <p className="text-xs text-brand-muted">{row.original.patient_phone}</p>
         </div>
       ),
     },
@@ -340,17 +333,6 @@ function StatusBadge({ status, t }) {
     <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium capitalize ${STATUS_STYLES[status] || 'border border-brand-muted/15 bg-brand-surface text-brand-muted'}`}>
       {key ? t(key) : String(status).replace('_', ' ')}
     </span>
-  )
-}
-
-function initials(name = '') {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((w) => w[0]?.toUpperCase() || '')
-      .join('') || '·'
   )
 }
 
