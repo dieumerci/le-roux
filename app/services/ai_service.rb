@@ -64,10 +64,10 @@ class AiService
   end
 
   # Generate a conversational response as Dr le Roux's receptionist.
-  # Accepts conversation history for multi-turn context.
-  def generate_response(message:, conversation_history: [], patient: nil, context: {})
+  # Accepts conversation history and optional media attachments (PDFs/images).
+  def generate_response(message:, conversation_history: [], patient: nil, context: {}, media_attachments: [])
     system = build_system_prompt(patient: patient, context: context)
-    messages = build_messages(conversation_history, message)
+    messages = build_messages(conversation_history, message, media_attachments: media_attachments)
 
     response = create_message(
       model: "claude-sonnet-4-20250514",
@@ -96,7 +96,7 @@ class AiService
   end
 
   # Handle a full conversation turn: classify, respond, and return structured result.
-  def process_message(message:, conversation: nil, patient: nil)
+  def process_message(message:, conversation: nil, patient: nil, media_attachments: [])
     history = conversation&.messages&.map { |m| { role: m["role"], content: m["content"] } } || []
 
     # Classify intent WITH conversation history for better multi-turn understanding
@@ -111,7 +111,8 @@ class AiService
       message: message,
       conversation_history: history,
       patient: patient,
-      context: context
+      context: context,
+      media_attachments: media_attachments
     )
 
     # Store messages in conversation if provided
@@ -250,11 +251,30 @@ class AiService
     time.wday.between?(1, 5) && time.hour >= 8 && time.hour < 17
   end
 
-  def build_messages(history, current_message)
+  def build_messages(history, current_message, media_attachments: [])
     messages = history.map do |msg|
       { role: msg[:role] || msg["role"], content: msg[:content] || msg["content"] }
     end
-    messages << { role: "user", content: current_message }
+
+    # When media is present, the current message content becomes a block array
+    # so Claude can process documents/images alongside the text.
+    user_content = if media_attachments.present?
+      document_blocks = media_attachments.map do |attachment|
+        {
+          type: "document",
+          source: {
+            type: "base64",
+            media_type: attachment[:content_type],
+            data: attachment[:data]
+          }
+        }
+      end
+      document_blocks + [ { type: "text", text: current_message } ]
+    else
+      current_message
+    end
+
+    messages << { role: "user", content: user_content }
     messages
   end
 

@@ -2,10 +2,13 @@ class WhatsappReplyJob < ApplicationJob
   queue_as :default
 
   def perform(from:, message:, twilio_params: {})
+    media_attachments = WhatsappService.extract_media_attachments(twilio_params)
+
     result = WhatsappService.new.handle_incoming(
       from: from,
       message: message,
-      twilio_params: twilio_params
+      twilio_params: twilio_params,
+      media_attachments: media_attachments
     )
 
     # Send the AI response back via Twilio REST API

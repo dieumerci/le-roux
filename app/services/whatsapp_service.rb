@@ -1,14 +1,36 @@
+require "net/http"
+require "base64"
+
 class WhatsappService
   class Error < StandardError; end
+
+  # Supported MIME types for Claude document API.
+  SUPPORTED_MEDIA_TYPES = %w[application/pdf image/jpeg image/png image/gif image/webp].freeze
 
   def initialize
     @ai = nil
     @templates = nil
   end
 
+  # Extract media attachment metadata from Twilio webhook params.
+  # Returns an array of { url:, content_type: } hashes (one per media item).
+  # Only includes MIME types the Claude API can process.
+  def self.extract_media_attachments(twilio_params)
+    num_media = twilio_params["NumMedia"].to_i
+    return [] if num_media.zero?
+
+    (0...num_media).filter_map do |i|
+      url = twilio_params["MediaUrl#{i}"]
+      content_type = twilio_params["MediaContentType#{i}"]
+      next unless url.present? && SUPPORTED_MEDIA_TYPES.include?(content_type)
+
+      { url: url, content_type: content_type }
+    end
+  end
+
   # Main entry point: handle an incoming WhatsApp message.
   # Returns { response:, intent:, entities: }
-  def handle_incoming(from:, message:, twilio_params: {})
+  def handle_incoming(from:, message:, twilio_params: {}, media_attachments: [])
     patient = find_or_create_patient(from)
     conversation = find_or_create_conversation(patient)
 
@@ -24,10 +46,13 @@ class WhatsappService
     end
 
     # Process through AI brain
+    downloaded = download_media_attachments(media_attachments)
+
     result = ai_service.process_message(
       message: message,
       conversation: conversation,
-      patient: patient
+      patient: patient,
+      media_attachments: downloaded
     )
 
     # Route based on detected intent
@@ -835,6 +860,43 @@ class WhatsappService
       af_count = words.count { |w| AFRIKAANS_MARKERS.include?(w) }
       af_count == 0 && words.length >= 3
     end
+  end
+
+  # --- Media Download ---
+
+  # Download all media attachments from Twilio, returning an array of
+  # { content_type:, data: (base64) } hashes ready for the Claude API.
+  # Individual failures are swallowed — the message still processes.
+  def download_media_attachments(attachments)
+    return [] if attachments.blank?
+
+    attachments.filter_map do |attachment|
+      download_media(attachment[:url], attachment[:content_type])
+    rescue StandardError => e
+      Rails.logger.warn("[WhatsApp] Media download failed (#{attachment[:url]}): #{e.message}")
+      nil
+    end
+  end
+
+  # Download a single Twilio media URL using Basic Auth credentials.
+  # Returns { content_type:, data: (base64 string) } or raises on failure.
+  def download_media(url, content_type)
+    account_sid = ENV.fetch("TWILIO_ACCOUNT_SID")
+    auth_token  = ENV.fetch("TWILIO_AUTH_TOKEN")
+
+    uri = URI.parse(url)
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = uri.scheme == "https"
+    http.open_timeout = 10
+    http.read_timeout = 30
+
+    request = Net::HTTP::Get.new(uri.request_uri)
+    request.basic_auth(account_sid, auth_token)
+
+    response = http.request(request)
+    raise Error, "HTTP #{response.code} downloading media from Twilio" unless response.is_a?(Net::HTTPSuccess)
+
+    { content_type: content_type, data: Base64.strict_encode64(response.body) }
   end
 
   def ai_service
