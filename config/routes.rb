@@ -28,7 +28,7 @@ Rails.application.routes.draw do
       patch :confirm
     end
   end
-  resources :patients, only: [ :index, :show, :create, :update ]
+  resources :patients, only: [ :index, :show, :create, :update, :destroy ]
   resources :conversations, only: [ :index, :show ] do
     collection do
       post :import

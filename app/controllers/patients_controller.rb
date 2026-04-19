@@ -121,6 +121,34 @@ class PatientsController < ApplicationController
     end
   end
 
+  # DELETE /patients/:id
+  #
+  # Hard-deletes the patient and all associated records.
+  # Irreversible — requires explicit confirmation from the UI.
+  def destroy
+    patient = Patient.find(params[:id])
+    name = patient.full_name
+    phone = patient.phone
+
+    patient.destroy!
+
+    AuditService.log(
+      action: "patient.deleted",
+      summary: "Deleted patient record for #{name} (#{phone})",
+      details: { name: name, phone: phone },
+      performed_by: audit_performer,
+      ip_address: request.remote_ip
+    )
+    expire_patient_caches!
+
+    redirect_to patients_path, notice: "Patient #{name} deleted", status: :see_other
+  rescue ActiveRecord::RecordNotFound
+    redirect_to patients_path, alert: "Patient not found", status: :see_other
+  rescue ActiveRecord::RecordNotDestroyed => e
+    redirect_back fallback_location: patients_path,
+      alert: "Could not delete patient: #{e.message}", status: :see_other
+  end
+
   private
 
   def patient_params

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { Link } from '@inertiajs/react'
-import { Pencil, HeartPulse, Shield, Phone } from 'lucide-react'
+import { Link, router } from '@inertiajs/react'
+import { Pencil, HeartPulse, Shield, Phone, Trash2 } from 'lucide-react'
 import DashboardLayout from '../layouts/DashboardLayout'
 import PatientFormModal from '../components/PatientFormModal'
 
@@ -15,6 +15,13 @@ const STATUS_STYLES = {
 
 export default function PatientShow({ patient, medical_history, appointments, conversations }) {
   const [editOpen, setEditOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const handleDelete = () => {
+    router.delete(`/patients/${patient.id}`, {
+      onSuccess: () => setConfirmDelete(false),
+    })
+  }
 
   return (
     <DashboardLayout>
@@ -28,14 +35,48 @@ export default function PatientShow({ patient, medical_history, appointments, co
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-5">
         <div className="flex items-start justify-between mb-4">
           <h1 className="text-xl font-bold text-brand-brown">{patient.full_name}</h1>
-          <button
-            type="button"
-            onClick={() => setEditOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-brand-brown hover:bg-brand-cream rounded-lg transition-colors border border-gray-200"
-          >
-            <Pencil size={13} /> Edit
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setEditOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-brand-brown hover:bg-brand-cream rounded-lg transition-colors border border-gray-200"
+            >
+              <Pencil size={13} /> Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-brand-danger hover:bg-brand-danger/5 rounded-lg transition-colors border border-brand-danger/20"
+            >
+              <Trash2 size={13} /> Delete
+            </button>
+          </div>
         </div>
+
+        {/* Delete confirmation inline banner */}
+        {confirmDelete && (
+          <div className="mb-4 rounded-xl border border-brand-danger/30 bg-brand-danger/5 px-4 py-3">
+            <p className="text-sm font-medium text-brand-danger mb-3">
+              Permanently delete <span className="font-bold">{patient.full_name}</span>? This cannot be undone — all appointments, conversations, and medical history will be removed.
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="rounded-lg bg-brand-danger px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-danger/90 transition-colors"
+              >
+                Yes, delete permanently
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                className="rounded-lg border border-brand-border px-4 py-1.5 text-xs font-semibold text-brand-muted hover:text-brand-ink transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
           <Field label="Phone"><p className="text-sm text-gray-800">{patient.phone}</p></Field>
           <Field label="Email"><p className="text-sm text-gray-800">{patient.email || '—'}</p></Field>
