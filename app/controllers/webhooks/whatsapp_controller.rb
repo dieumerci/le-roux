@@ -46,7 +46,11 @@ module Webhooks
       return if Rails.env.test? || Rails.env.development?
 
       validator = Twilio::Security::RequestValidator.new(ENV.fetch("TWILIO_AUTH_TOKEN"))
-      url = request.original_url
+      # Use APP_BASE_URL so the URL matches what Twilio signed regardless of
+      # how the reverse proxy reconstructs the scheme/host.
+      base = ENV.fetch("APP_BASE_URL", request.base_url).delete_suffix("/")
+      url  = "#{base}#{request.path}"
+      url += "?#{request.query_string}" if request.query_string.present?
       twilio_signature = request.headers["X-Twilio-Signature"]
 
       unless validator.validate(url, request.POST, twilio_signature.to_s)
