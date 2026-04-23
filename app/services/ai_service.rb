@@ -52,7 +52,7 @@ class AiService
     messages = build_messages(conversation_history, message)
 
     response = create_message(
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 256,
       system: intent_classification_prompt(today: Date.current),
       messages: messages
@@ -70,7 +70,7 @@ class AiService
     messages = build_messages(conversation_history, message, media_attachments: media_attachments)
 
     response = create_message(
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 1024,
       system: system,
       messages: messages
@@ -84,7 +84,7 @@ class AiService
   # Extract structured entities from a message (date, time, name, treatment).
   def extract_entities(message)
     response = create_message(
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 256,
       system: entity_extraction_prompt,
       messages: [ { role: "user", content: message } ]
