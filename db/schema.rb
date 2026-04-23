@@ -11,15 +11,8 @@
 # It's strongly recommended that you check this file into your version control system.
 
 ActiveRecord::Schema[8.1].define(version: 2026_04_22_160000) do
-  create_schema "extensions"
-
   # These are extensions that must be enabled in order to support this database
-  enable_extension "extensions.pg_stat_statements"
-  enable_extension "extensions.pgcrypto"
-  enable_extension "extensions.uuid-ossp"
-  enable_extension "graphql.pg_graphql"
-  enable_extension "pg_catalog.plpgsql"
-  enable_extension "vault.supabase_vault"
+  enable_extension "plpgsql"
 
   create_table "public.analytics_events", force: :cascade do |t|
     t.datetime "created_at", null: false
