@@ -18,7 +18,7 @@ class AiService
     "location" => "Our practice is located at: #{PRACTICE_ADDRESS}\nGoogle Maps: #{PRACTICE_MAP_LINK}\nDirections: #{PRACTICE_DIRECTIONS}",
     "parking" => "Free parking is available on the premises.",
     "services" => "We offer general dentistry, check-ups, cleanings, fillings, extractions, root canals, crowns, bridges, and cosmetic treatments. An examination is the best first step for any concern.",
-    "emergency" => "For dental emergencies, please contact Dr Chalita directly at 071 884 3204. If after hours, call that number and we'll assist you as quickly as possible.",
+    "emergency" => "For dental emergencies, please share your name, contact number and a short description of the issue. We're open *Monday to Friday, 8am–5pm* and we don't have dentists on duty outside those hours — we always prioritise emergencies and will book you in at the very first available slot the moment we reopen.",
     "payment" => "We do not claim directly from medical aid. All patients pay at the practice, and we then provide a statement so you can claim back from your medical aid. We have card facilities at the practice and also accept cash."
   }.freeze
 
