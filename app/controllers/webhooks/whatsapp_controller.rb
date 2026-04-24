@@ -10,6 +10,16 @@ module Webhooks
     # reply is sent asynchronously via WhatsAppReplyJob which calls
     # the Twilio Messages API directly.
     def incoming
+      # Idempotency guard: Twilio retries webhooks if it doesn't get a fast 200.
+      # Re-processing the same message duplicates Anthropic calls + bloats conversation
+      # history. Cache on MessageSid for 2 minutes; second+ hit returns immediately.
+      sid = params["MessageSid"].to_s.presence
+      if sid && !Rails.cache.write("twilio_webhook:#{sid}", Time.current.to_i, expires_in: 2.minutes, unless_exist: true)
+        Rails.logger.info("[WhatsApp Webhook] Duplicate webhook #{sid}, skipping")
+        respond_with_empty_twiml
+        return
+      end
+
       sender = params["From"]&.gsub("whatsapp:", "")
       body = params["Body"]&.strip
       button_payload = params["ButtonPayload"] || params["ButtonText"]
