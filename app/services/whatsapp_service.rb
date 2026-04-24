@@ -220,26 +220,32 @@ class WhatsappService
   # reads `result[:response]` *after* this handler returns.
 
   BOOKING_FAILED_FALLBACK = {
-    "en" => "Sorry — that slot isn't available anymore (someone else may have just " \
-            "taken it, or it's outside our working hours). Could you try a " \
-            "different day or time? Or call us on *071 884 3204*.",
-    "af" => "Jammer — daardie tyd is nie meer beskikbaar nie (iemand anders het " \
-            "dalk pas bespreek, of dit val buite ons werksure). Kan jy 'n ander " \
-            "dag of tyd probeer? Of bel ons by *071 884 3204*."
+    "en" => "Sorry — that slot isn't available (someone else may have just " \
+            "taken it, or it's outside our working hours). We're open Monday " \
+            "to Friday, 8am–5pm. Could you try a different day or time?",
+    "af" => "Jammer — daardie tyd is nie beskikbaar nie (iemand anders het " \
+            "dalk pas bespreek, of dit val buite ons werksure). Ons is oop " \
+            "Maandag tot Vrydag, 8vm–5nm. Kan jy 'n ander dag of tyd probeer?"
   }.freeze
 
   AFTER_HOURS_TODAY_BLOCKED = {
-    "en" => "Hi there! Our practice is currently closed (after hours). 🕐\n\n" \
-            "🚨 *Dental emergency?* Contact Dr Chalita directly: *071 884 3204*\n\n" \
-            "For non-urgent bookings, you're welcome to book for the next working day — " \
-            "just send me your preferred date and time and we'll confirm first thing when we open. 😊",
-    "af" => "Hallo! Ons praktyk is tans gesluit (na-ure). 🕐\n\n" \
-            "🚨 *Tandheelkundige noodgeval?* Kontak Dr Chalita direk: *071 884 3204*\n\n" \
-            "Vir nie-dringende besprekings kan jy gerus vir die volgende werksdag bespreek — " \
-            "stuur net jou voorkeur datum en tyd en ons bevestig sodra ons oopmaak. 😊"
+    "en" => "Hi there! Our practice is currently closed. 🕐\n\n" \
+            "We're open *Monday to Friday, 8am–5pm*, and we don't have dentists " \
+            "on duty outside those hours. If this is a dental emergency, please " \
+            "share your name, contact number and a short description — we always " \
+            "prioritise emergencies and will book you into the very first " \
+            "available slot the moment we reopen. 😊\n\n" \
+            "Otherwise, send me your preferred date and time (during business hours) " \
+            "and I'll get you booked in.",
+    "af" => "Hallo! Ons praktyk is tans gesluit. 🕐\n\n" \
+            "Ons is oop *Maandag tot Vrydag, 8vm–5nm*, en het nie tandartse " \
+            "na-ure werksaam nie. Indien dit 'n tandheelkundige noodgeval is, " \
+            "stuur asseblief jou naam, kontaknommer en 'n kort beskrywing — " \
+            "ons prioritiseer altyd noodgevalle en bespreek jou in op die eerste " \
+            "beskikbare tyd sodra ons weer oopmaak. 😊\n\n" \
+            "Andersins, stuur my jou voorkeurdatum en -tyd (binne werksure) " \
+            "en ek kry jou bespreek."
   }.freeze
-
-  EMERGENCY_PHONE = "071 884 3204".freeze
 
   PRACTICE_ADDRESS = "Unit 2, Amorosa Office Park, Corner of Doreen Road & Lawrence Rd, Amorosa, Roodepoort, Johannesburg, 2040".freeze
 
@@ -825,8 +831,8 @@ class WhatsappService
   }.freeze
 
   URGENT_FAST_PATH = {
-    "en" => "I'm sorry you're dealing with that. If this is an emergency, please contact Dr Chalita directly at #{EMERGENCY_PHONE} so we can assist you as quickly as possible.",
-    "af" => "Ek is jammer om dit te hoor. As dit 'n noodgeval is, kontak Dr Chalita direk by #{EMERGENCY_PHONE} sodat ons jou so gou moontlik kan help."
+    "en" => "I'm sorry you're dealing with that. We're open *Monday to Friday, 8am–5pm* and we don't have dentists on duty outside those hours. Please share your name, contact number and a short description — we'll prioritise your case and book you into the very first available slot.",
+    "af" => "Ek is jammer om dit te hoor. Ons is oop *Maandag tot Vrydag, 8vm–5nm* en het nie tandartse na-ure werksaam nie. Stuur asseblief jou naam, kontaknommer en 'n kort beskrywing — ons prioritiseer jou saak en bespreek jou in op die eerste beskikbare tyd."
   }.freeze
 
   def build_fallback_result(message:, conversation:)
