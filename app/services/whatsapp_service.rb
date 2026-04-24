@@ -154,12 +154,12 @@ class WhatsappService
   # reads `result[:response]` *after* this handler returns.
 
   BOOKING_FAILED_FALLBACK = {
-    "en" => "Sorry — I couldn't lock that slot in. It may have just been " \
-            "taken, or our calendar isn't reachable right now. Could you " \
-            "try a different time, or call the practice directly?",
-    "af" => "Jammer — ek kon nie daardie tyd vasmaak nie. Dit is dalk pas " \
-            "geneem, of ons kalender is nie nou bereikbaar nie. Kan jy " \
-            "'n ander tyd probeer, of bel die praktyk direk?"
+    "en" => "Sorry — that slot isn't available anymore (someone else may have just " \
+            "taken it, or it's outside our working hours). Could you try a " \
+            "different day or time? Or call us on *071 884 3204*.",
+    "af" => "Jammer — daardie tyd is nie meer beskikbaar nie (iemand anders het " \
+            "dalk pas bespreek, of dit val buite ons werksure). Kan jy 'n ander " \
+            "dag of tyd probeer? Of bel ons by *071 884 3204*."
   }.freeze
 
   AFTER_HOURS_TODAY_BLOCKED = {
@@ -262,6 +262,19 @@ class WhatsappService
       # Confirmation was already sent via send_booking_confirmation_message.
       # Clear the AI's response so the job doesn't send a second conflicting message.
       result[:response] = nil
+      return
+    end
+
+    # Booking attempted but failed (slot conflict, past time, rescue path).
+    # Unconditionally rewrite the AI response — never trust that booking_claim?
+    # caught every possible confirmation phrase. DB is source of truth; if no
+    # Appointment was persisted, the patient does NOT have a booking.
+    if date.present? && time.present? && booking_result.nil?
+      Rails.logger.warn(
+        "[WhatsApp] Booking attempted but failed; overriding AI response to prevent " \
+        "false confirmation. date=#{date.inspect} time=#{time.inspect}"
+      )
+      result[:response] = BOOKING_FAILED_FALLBACK[lang] || BOOKING_FAILED_FALLBACK["en"]
       return
     end
 
