@@ -1041,7 +1041,7 @@ class WhatsappService
     # (price, 90 min duration, R2,000 deposit, banking details). Subsequent
     # messages in the same conversation fall through to the AI so follow-up
     # booking questions can be handled conversationally.
-    if message.downcase.match?(/\b(teeth whitening|whitening|bleach(ing)?|biolase)\b/) && !whitening_already_sent?(conversation)
+    if message.downcase.match?(/\b(teeth whitening|whitening|bleach(ing)?|biolase|tandebleiking|bleiking|tand-bleiking|bleik)\b/) && !whitening_already_sent?(conversation)
       return {
         response: WHITENING_INFO[lang] || WHITENING_INFO["en"],
         intent: "whitening_info",
