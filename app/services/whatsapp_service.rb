@@ -145,21 +145,30 @@ class WhatsappService
   # Patterns suggesting the AI could not answer the query usefully. When
   # matched, verify_response_is_actionable escalates to staff review.
   UNCERTAINTY_PATTERNS = [
+    # Core exhaustion / out-of-scope signals
     /system is a bit busy/i,
+    /\bi'?m an AI (assistant|bot)\b/i,
     /\bi'?m not sure\b/i,
+    /\bi'?m not able to (answer|assist with|access)\b/i,
+    # "don't have access" family
     /\bi don'?t (have|know) (that|the) (answer|information)\b/i,
     /\bi don'?t have access to\b/i,
+    /\bi don'?t have (the|that) (context|details?)\b/i,
+    /\bnot able to access\b/i,
     /that'?s outside (my|our) scope/i,
+    # Explicit hand-off phrasing
     /\blet me get back to you\b/i,
     /\bi'?ll need to check with (the team|our team|the practice)\b/i,
     /\bi'?ll need to have our team\b/i,
-    /\bi'?ll flag (your|this|that) (message|query|question|one)\b/i,
-    /\b(our team|the practice|someone from the practice) (will|can) (come back|follow up|get back|reach out)\b/i,
-    /\b(come back|get back) to you personally\b/i,
+    /\bi'?ll (need to )?flag (this|that|your|it|the)\b/i,
+    /\bflag (this|that|it|the|your message|your query) (for|message|question|to|as)?\b/i,
+    /\bfor staff review\b/i,
+    /\bmake sure (our team|the practice|someone)\b/i,
+    # "(our) team will come back / comes back / gets back"
+    /\b(our team|the practice|someone from the practice|the team) (will|can|comes?|gets?) (come back|back|follow up|get back|reach out)\b/i,
+    /\b(come|comes?|get|gets?) back to you personally\b/i,
     /\bfollow up (with you )?as soon as the practice opens\b/i,
-    /cannot answer that (query|question)/i,
-    /\bi'?m not able to (answer|assist with)\b/i,
-    /\bi don'?t have (the|that) (context|details?)\b/i
+    /cannot answer that (query|question)/i
   ].freeze
 
   def verify_response_is_actionable(result, patient, conversation)
