@@ -123,6 +123,20 @@ class WhatsappService
   # --- Intent Routing ---
 
   def handle_intent(result, patient, conversation)
+    # If the classifier did not tag this as "book" but extracted a concrete
+    # date+time, treat it as a booking attempt. Otherwise the AI's free text
+    # may claim a confirmation ("Here's a summary...") even though no
+    # Appointment will be persisted. Forcing the booking path lets
+    # attempt_booking actually write to DB (or fail cleanly via the fallback).
+    entities = result[:entities] || {}
+    if result[:intent] != "book" && entities[:date].present? && entities[:time].present?
+      Rails.logger.info(
+        "[WhatsApp] Forcing intent=book (classifier said #{result[:intent].inspect}; " \
+        "entities have date=#{entities[:date].inspect} time=#{entities[:time].inspect})"
+      )
+      result[:intent] = "book"
+    end
+
     case result[:intent]
     when "book"
       handle_booking(result, patient, conversation)
