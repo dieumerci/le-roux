@@ -40,6 +40,23 @@ class WhatsappService
     conversation = find_or_create_conversation(patient)
 
     # Detect and persist language from the first message
+
+    # If the patient sent media (image/PDF) and has a pending_confirmation
+    # whitening appointment, tag the conversation deposit_proof_received so
+    # staff can verify + flip status to scheduled.
+    if media_attachments.present? && conversation
+      pending = patient.appointments.where(status: :pending_confirmation)
+                       .where("LOWER(notes) LIKE ?", "%whitening deposit%")
+                       .exists?
+      if pending
+        tags = Array(conversation.tags || [])
+        unless tags.include?("deposit_proof_received")
+          conversation.update(tags: (tags + ["deposit_proof_received"]).uniq)
+          Rails.logger.info("[Whitening] Deposit proof media received for patient ##{patient.id}; conversation ##{conversation.id} tagged.")
+          send_flagged_alert(patient, "WHITENING DEPOSIT PROOF received — verify & confirm appointment")
+        end
+      end
+    end
     detect_and_persist_language(conversation, message)
 
     # Button-reply fast path — intercepts quick-reply payloads before the AI
@@ -557,11 +574,25 @@ class WhatsappService
       return nil
     end
 
+    # Whitening is paid via R2,000 deposit upfront. Until proof of payment
+    # lands, the appointment is :pending_confirmation — the diary slot is
+    # held but staff verify payment before the patient is "locked in".
+    is_whitening = treatment.to_s.downcase.match?(/whitening|biolase|bleiking|tandebleiking|bleach/)
+    base_status = if after_hours
+                    :pending_confirmation
+                  elsif is_whitening
+                    :pending_confirmation
+                  else
+                    :scheduled
+                  end
+    booking_notes = is_whitening ? "awaiting R2,000 whitening deposit" : nil
+
     appointment = patient.appointments.create!(
       start_time: start_time,
       end_time: end_time,
       reason: reason,
-      status: after_hours ? :pending_confirmation : :scheduled
+      status: base_status,
+      notes: booking_notes
     )
 
     # Create a confirmation log so the reminders page tracks this
