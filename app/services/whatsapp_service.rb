@@ -148,10 +148,18 @@ class WhatsappService
     /system is a bit busy/i,
     /\bi'?m not sure\b/i,
     /\bi don'?t (have|know) (that|the) (answer|information)\b/i,
+    /\bi don'?t have access to\b/i,
     /that'?s outside (my|our) scope/i,
     /\blet me get back to you\b/i,
     /\bi'?ll need to check with (the team|our team|the practice)\b/i,
-    /cannot answer that (query|question)/i
+    /\bi'?ll need to have our team\b/i,
+    /\bi'?ll flag (your|this|that) (message|query|question|one)\b/i,
+    /\b(our team|the practice|someone from the practice) (will|can) (come back|follow up|get back|reach out)\b/i,
+    /\b(come back|get back) to you personally\b/i,
+    /\bfollow up (with you )?as soon as the practice opens\b/i,
+    /cannot answer that (query|question)/i,
+    /\bi'?m not able to (answer|assist with)\b/i,
+    /\bi don'?t have (the|that) (context|details?)\b/i
   ].freeze
 
   def verify_response_is_actionable(result, patient, conversation)
