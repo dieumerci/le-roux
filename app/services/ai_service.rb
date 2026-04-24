@@ -147,15 +147,46 @@ class AiService
   def create_message(**parameters)
     attempts = 0
 
-    begin
+    response = begin
       attempts += 1
       @client.messages(parameters: parameters)
     rescue Faraday::Error => e
-      raise unless retryable_error?(e) && attempts <= MAX_RETRIES
+      raise Error, "Anthropic API error: #{e.message}" if attempts >= 3 || !retryable_error?(e)
 
       sleep(0.25 * attempts)
       retry
     end
+
+    log_anthropic_usage(parameters, response)
+    response
+  end
+
+  ANTHROPIC_RATES = {
+    "claude-sonnet-4-6"  => { input: 3.0,  output: 15.0 },
+    "claude-haiku-4-5"   => { input: 1.0,  output: 5.0  },
+    "claude-opus-4-6"    => { input: 15.0, output: 75.0 }
+  }.freeze
+
+  def log_anthropic_usage(parameters, response)
+    usage = response.is_a?(Hash) ? (response["usage"] || response[:usage] || {}) : {}
+    input_tokens  = usage["input_tokens"].to_i
+    output_tokens = usage["output_tokens"].to_i
+    model = (parameters[:model] || parameters["model"] || "claude-sonnet-4-6").to_s
+    rates = ANTHROPIC_RATES[model] || ANTHROPIC_RATES["claude-sonnet-4-6"]
+    cost_usd = ((input_tokens * rates[:input]) + (output_tokens * rates[:output])) / 1_000_000.0
+
+    Rails.logger.info(
+      "[AiCost] model=#{model} input_tokens=#{input_tokens} " \
+      "output_tokens=#{output_tokens} est_usd=#{format('%.6f', cost_usd)}"
+    )
+
+    today = Date.current.to_s
+    Rails.cache.increment("ai_cost:#{today}:calls", 1, expires_in: 40.days) rescue nil
+    Rails.cache.increment("ai_cost:#{today}:input_tokens",  input_tokens,  expires_in: 40.days) rescue nil
+    Rails.cache.increment("ai_cost:#{today}:output_tokens", output_tokens, expires_in: 40.days) rescue nil
+    Rails.cache.increment("ai_cost:#{today}:cost_micros",   (cost_usd * 1_000_000).round, expires_in: 40.days) rescue nil
+  rescue StandardError => e
+    Rails.logger.warn("[AiCost] usage logging failed: #{e.class}: #{e.message}")
   end
 
   def retryable_error?(error)
