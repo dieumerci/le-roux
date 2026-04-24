@@ -97,7 +97,9 @@ class AiService
 
   # Handle a full conversation turn: classify, respond, and return structured result.
   def process_message(message:, conversation: nil, patient: nil, media_attachments: [])
-    history = conversation&.messages&.map { |m| { role: m["role"], content: m["content"] } } || []
+        raw_history = (conversation&.messages || []).last(20)
+    raw_history = raw_history.drop_while { |m| (m["role"] || m[:role]) != "user" }
+    history = raw_history.map { |m| { role: m["role"] || m[:role], content: m["content"] || m[:content] } }
 
     # Classify intent WITH conversation history for better multi-turn understanding
     classification = classify_intent(message, conversation_history: history)
