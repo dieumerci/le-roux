@@ -373,14 +373,12 @@ class WhatsappService
   ].map { |s| Date.parse(s) }.freeze
 
   PUBLIC_HOLIDAY_BLOCKED = {
-    "en" => "That day is a South African public holiday and we'll be closed. " \
-            "We're open Monday to Friday (excluding public holidays), 8am–5pm. " \
-            "Could you try a different day? I'm happy to book the next available " \
-            "working day.",
-    "af" => "Daardie dag is 'n Suid-Afrikaanse openbare vakansiedag en ons is " \
-            "gesluit. Ons is oop Maandag tot Vrydag (uitgesluit openbare " \
-            "vakansiedae), 8vm–5nm. Kan jy 'n ander dag probeer? Ek bespreek " \
-            "graag die volgende beskikbare werksdag."
+    "en" => "Unfortunately we're closed on that day. We're open *Monday to Friday, " \
+            "8am–5pm* (excluding public holidays and weekends). Could you try a " \
+            "different day? I'm happy to book the next available working day.",
+    "af" => "Jammer, ons is op daardie dag gesluit. Ons is oop *Maandag tot Vrydag, " \
+            "8vm–5nm* (uitgesluit openbare vakansiedae en naweke). Kan jy 'n ander " \
+            "dag probeer? Ek bespreek graag die volgende beskikbare werksdag."
   }.freeze
 
   PRACTICE_ADDRESS = "Unit 2, Amorosa Office Park, Corner of Doreen Road & Lawrence Rd, Amorosa, Roodepoort, Johannesburg, 2040".freeze
@@ -671,8 +669,10 @@ class WhatsappService
   # Working-hours check against DoctorSchedule. Rejects bookings
   # outside the doctor's hours, on closed days, or that overlap
   # the lunch break.
-  # Returns true if the given date is a South African public holiday.
+  # True for any day we do not accept bookings on: weekends (Saturday/Sunday)
+  # or any South African public holiday.
   def public_holiday?(date)
+    return true if date.wday == 0 || date.wday == 6
     PUBLIC_HOLIDAYS_SA.include?(date)
   end
   def slot_within_working_hours?(start_time, end_time)
