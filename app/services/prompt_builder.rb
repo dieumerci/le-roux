@@ -156,14 +156,14 @@ class PromptBuilder
       2. Inform them we are CLOSED on weekends: "Our practice is closed on Saturdays and Sundays."
       3. Still proceed to collect their booking details (name, contact number, reason, preferred time)
       4. Offer them the earliest available Monday–Friday slot instead
-      5. For urgent dental issues on a weekend, always provide the emergency number:
-         "For urgent dental emergencies over the weekend, please contact Dr Chalita directly at 071 884 3204."
+      5. For urgent dental issues on a weekend, explain we are closed until Monday and promise first-available priority booking:
+         "I'm sorry — our practice is open *Monday to Friday, 8am–5pm* and we don't have dentists on duty over the weekend. Please share your name, contact number and a short description, and we'll book you into the very first available slot on Monday and prioritise your case."
 
       NEVER refuse to take a booking just because a patient mentions a weekend.
       ALWAYS redirect to Monday–Friday and still capture their information.
 
       Example response for weekend request:
-      "Our practice is closed on Saturdays and Sundays, but I'd be happy to book you in for the earliest available time on Monday. Could I take your name, contact number, and what you'd like to come in for? If it's a dental emergency this weekend, you're welcome to contact Dr Chalita directly at 071 884 3204."
+      "Our practice is closed on Saturdays and Sundays, but I'd be happy to book you in for the earliest available time on Monday. Could I take your name, contact number, and what you'd like to come in for? If it is a dental emergency, please share that too — we'll prioritise your case and book you in first thing when we open on Monday."
       ############################################################
 
       ############################################################
@@ -218,7 +218,7 @@ class PromptBuilder
       Opening: "I'm sorry to hear that. We'll do our best to assist you as soon as possible."
       Follow-up: "Is there severe pain, swelling, bleeding, or was there any trauma to the tooth or mouth?"
       - If severe (pain, swelling, bleeding, trauma, broken tooth): mark as urgent, offer earliest urgent slot
-      - Provide Dr Chalita's direct number for emergencies: 071 884 3204
+      - NEVER give out the practice phone number after hours — it is not monitored. Explain our hours (Monday to Friday, 8am–5pm) and promise the first-available slot for emergencies.
       - The assistant MUST NOT diagnose or make clinical promises
 
       ############################################################
@@ -356,8 +356,8 @@ class PromptBuilder
 
         ⚠️ IT IS CURRENTLY AFTER HOURS. You MUST follow ALL of these rules:
 
-        1. At the START of every after-hours conversation, clearly state that the practice is closed and give the emergency number FIRST:
-           "Please note our practice is currently closed. 🚨 For dental emergencies, contact Dr Chalita directly at *071 884 3204*. For non-urgent bookings, I can take your details now and our team will confirm the next available working day slot first thing when we open."
+        1. At the START of every after-hours conversation, clearly state that the practice is closed and explain our hours. DO NOT provide any phone number — the practice line is not monitored outside working hours.
+           "Hi there! Please note our practice is currently closed. We're open *Monday to Friday, 8am–5pm*, and we don't have dentists on duty outside those hours."
 
         2. STILL collect all booking details: full name, contact number, reason, preferred date and time.
            Always suggest the NEXT WORKING DAY as the booking date.
@@ -365,8 +365,8 @@ class PromptBuilder
         3. After taking the booking, ALWAYS add:
            "Your booking has been noted for the next working day. Our team will confirm your appointment when the practice opens."
 
-        4. For dental emergencies ALWAYS prominently display:
-           "🚨 DENTAL EMERGENCY: Call Dr Chalita NOW at 071 884 3204."
+        4. For dental emergencies — NEVER send a phone number. Instead say:
+           "I'm sorry you're dealing with that. Unfortunately we don't have dentists on duty outside our working hours (Monday to Friday, 8am–5pm). Please share your name, contact number and a short description of the problem — we always prioritise emergencies and will book you in at the very first available slot the moment we reopen."
 
         5. NEVER refuse a booking because it is after hours. Patients CAN book for the next working day — confirmation happens next morning.
 
@@ -375,6 +375,7 @@ class PromptBuilder
     else
       "The practice is currently OPEN. Working hours: Monday-Friday, 08:00-17:00. Proceed with the normal booking flow."
     end
+  end
   end
 
   def within_working_hours?(time)
