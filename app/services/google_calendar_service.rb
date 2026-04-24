@@ -8,6 +8,7 @@ class GoogleCalendarService
   def initialize
     @service = Google::Apis::CalendarV3::CalendarService.new
     @service.authorization = authorization
+    Rails.logger.info("[GCS] initialized. CALENDAR_ID=#{CALENDAR_ID.inspect} SA_email=#{ENV['GOOGLE_SERVICE_ACCOUNT_JSON'].to_s.match(/client_email":"([^"]+)/)&.[](1)}")
   rescue Error
     raise
   rescue StandardError => e
@@ -56,6 +57,7 @@ class GoogleCalendarService
   # Unlike book_appointment, this does NOT create a local Appointment row —
   # used by sync_to_google_calendar when the row already exists.
   def create_event(patient:, start_time:, end_time:, reason: nil)
+    Rails.logger.info("[GCS] create_event start: patient=#{patient&.full_name.inspect} start=#{start_time} cal=#{CALENDAR_ID}")
     event = Google::Apis::CalendarV3::Event.new(
       summary: "Dental Appointment — #{patient.full_name}",
       description: build_description(patient, reason),
@@ -64,7 +66,12 @@ class GoogleCalendarService
       reminders: { use_default: false }
     )
     result = @service.insert_event(CALENDAR_ID, event)
+    Rails.logger.info("[GCS] create_event OK: id=#{result.id} htmlLink=#{result.html_link}")
+    Rails.logger.info("[GCS] create_event OK: event_id=#{result.id} link=#{result.html_link}")
     result.id
+  rescue StandardError => e
+    Rails.logger.error("[GCS] create_event FAILED: #{e.class}: #{e.message} backtrace=#{e.backtrace&.first(3)&.join(' | ')}")
+    raise Error, "Unexpected: #{e.class}: #{e.message}"
   rescue Google::Apis::Error => e
     raise Error, "Failed to create calendar event: #{e.message}"
   end
