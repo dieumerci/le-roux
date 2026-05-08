@@ -34,7 +34,7 @@ gem "image_processing", "~> 1.2"
 gem "rack-cors"
 
 # === Twilio - WhatsApp & Voice calls ===
-gem "twilio-ruby", "~> 7.0"
+gem "twilio-ruby", "~> 7.10"
 
 # === Google Calendar API - Appointment scheduling ===
 gem "google-apis-calendar_v3"
