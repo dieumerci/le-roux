@@ -44,7 +44,7 @@ gem "googleauth"
 gem "ruby-anthropic", "~> 0.4", require: "anthropic"
 
 # === Zip file processing (WhatsApp bulk import) ===
-gem "rubyzip", "~> 2.3", require: "zip"
+gem "rubyzip", "~> 3.3", require: "zip"
 
 # === Frontend - Inertia.js + React dashboard ===
 gem "inertia_rails"
